@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RunPod Studio ⚡ Studio & Gestionnaire de Médias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=8">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar / Header Nav -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-icon">⚡</div>
+        <div class="brand-text">
+          <h1>RunPod Studio</h1>
+          <span class="version-badge">v1.2 Studio</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="studio">
+          <span class="icon">🎨</span>
+          <span>Studio Génération</span>
+        </button>
+        <button class="nav-item" data-tab="gallery">
+          <span class="icon">📁</span>
+          <span>Médias & Galerie</span>
+          <span class="counter-badge" id="media-count">0</span>
+        </button>
+        <button class="nav-item" data-tab="prompts">
+          <span class="icon">📜</span>
+          <span>Historique Prompts</span>
+          <span class="counter-badge" id="prompts-count">0</span>
+        </button>
+        <button class="nav-item" data-tab="jobs">
+          <span class="icon">⏳</span>
+          <span>File & Historique</span>
+          <span class="counter-badge active-jobs-badge" id="active-jobs-count" style="display:none;">0</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <span class="icon">⚙️</span>
+          <span>Paramètres & API</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-account-box" id="sidebar-account-box">
+          <div class="account-header-row">
+            <div class="balance-pill" id="sidebar-balance-pill" title="Solde actuel RunPod">
+              <span class="balance-icon">💳</span>
+              <span class="balance-amount" id="sidebar-balance-val">-- $</span>
+            </div>
+            <button type="button" class="btn-balance-refresh" id="btn-refresh-balance" title="Actualiser le solde" onclick="fetchBalance(true)">
+              <span class="refresh-icon">🔄</span>
+            </button>
+          </div>
+          <div class="account-meta-row">
+            <span class="status-dot online" id="sidebar-status-dot"></span>
+            <span class="account-email-label" id="sidebar-account-email" title="Compte RunPod">Chargement...</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- TAB 1: STUDIO GENERATION -->
+      <section id="tab-studio" class="tab-pane active">
+        <div class="section-header">
+          <div>
+            <h2>Studio de Création IA</h2>
+            <p class="subtitle">Générez, animez, transformez et personnalisez vos visuels en haute définition.</p>
+          </div>
+          <div class="pipeline-switcher">
+            <button class="pill-btn active" data-pipeline="txt2vid">🎬 Text-to-Video</button>
+            <button class="pill-btn" data-pipeline="img2vid">🖼️ Image-to-Video</button>
+            <button class="pill-btn" data-pipeline="img2img">🎨 Image-to-Image</button>
+            <button class="pill-btn" data-pipeline="faceswap">🎭 Face Swap</button>
+            <button class="pill-btn" data-pipeline="vid2vid">🎞️ Video-to-Video</button>
+            <button class="pill-btn" data-pipeline="txt2img">✨ Text-to-Image</button>
+            <button class="pill-btn" data-pipeline="enhance">🧠 Prompt Enhancer</button>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <!-- Left Column: Parameters & Controls -->
+          <div class="card glass-card studio-form-container">
+            <!-- Form for txt2vid -->
+            <form id="form-txt2vid" class="pipeline-form active">
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="t2v-prompt">Prompt de la scène</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('t2v-prompt')">📜 Historique</button>
+                </div>
+                <div class="textarea-wrapper">
+                  <textarea id="t2v-prompt" rows="4" placeholder="Ex: An elegant woman in casual dress and stylish pink knee-high compression support socks, walking gracefully toward modern airport..."></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('t2v-prompt')">🧠 Optimiser</button>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="t2v-video-model">Moteur Vidéo</label>
+                  <select id="t2v-video-model">
+                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Fluide / HD)</option>
+                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-rapide / DiT)</option>
+                    <option value="minimax-h3">🌊 MiniMax-H3 (Hailuo 3 / 2K & Audio)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="t2v-mode">Moteur Image Initiale</label>
+                  <select id="t2v-mode">
+                    <option value="cloud" selected>🚀 RunPod Flux (Cloud)</option>
+                    <option value="local">💻 Local GPU (RTX 2080)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="t2v-resolution">Résolution</label>
+                  <select id="t2v-resolution">
+                    <option value="720p" selected>720p (Haute Qualité HD)</option>
+                    <option value="480p">480p (Rendu Rapide)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="t2v-duration">Durée (secondes)</label>
+                  <select id="t2v-duration">
+                    <option value="5" selected>5 secondes</option>
+                    <option value="10">10 secondes</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="t2v-format">Format Image</label>
+                  <select id="t2v-format">
+                    <option value="768x1344" selected>Portrait 9:16 (Mobile / Reels)</option>
+                    <option value="1344x768">Paysage 16:9 (Cinéma)</option>
+                    <option value="1024x1024">Carré 1:1 (Instagram)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="t2v-enhance-prompt">
+                  <span>Activer l'enrichissement automatique de prompt (Qwen3-32B)</span>
+                </label>
+              </div>
+
+              <div class="form-group">
+                <label for="t2v-output-video">Nom du fichier de sortie</label>
+                <input type="text" id="t2v-output-video" value="studio_video.mp4" placeholder="ex: mon_animation.mp4">
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow">
+                <span>🚀 Lancer Text-to-Video</span>
+              </button>
+            </form>
+
+            <!-- Form for img2vid -->
+            <form id="form-img2vid" class="pipeline-form">
+              <div class="form-group">
+                <label>Image Source</label>
+                <div class="media-selector-box" id="i2v-source-preview">
+                  <div class="empty-state-selector">
+                    <span>🖼️ Glissez une image ici ou cliquez pour choisir dans la galerie</span>
+                  </div>
+                </div>
+                <input type="hidden" id="i2v-image-path">
+                <div class="selector-actions">
+                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2v-image-path', 'i2v-source-preview', 'image')">Galerie</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('i2v-image-path', 'i2v-source-preview', 'image')">Upload</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('i2v-image-path')">✂️ Recadrer</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="i2v-prompt">Prompt d'animation de mouvement</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('i2v-prompt')">📜 Historique</button>
+                </div>
+                <div class="textarea-wrapper">
+                  <textarea id="i2v-prompt" rows="3" placeholder="Ex: Smooth cinematic camera pan following her walk, natural movement, golden hour window light, 60fps"></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('i2v-prompt')">🧠 Optimiser</button>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="i2v-video-model">Moteur Vidéo</label>
+                  <select id="i2v-video-model">
+                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Fluide / HD)</option>
+                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-rapide / DiT)</option>
+                    <option value="minimax-h3">🌊 MiniMax-H3 (Hailuo 3 / 2K & Audio)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="i2v-resolution">Résolution</label>
+                  <select id="i2v-resolution">
+                    <option value="720p" selected>720p (Recommandé)</option>
+                    <option value="480p">480p</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="i2v-duration">Durée</label>
+                  <select id="i2v-duration">
+                    <option value="5" selected>5 secondes</option>
+                    <option value="10">10 secondes</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="i2v-output">Nom du fichier vidéo</label>
+                <input type="text" id="i2v-output" value="animation_image.mp4">
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow">
+                <span>🚀 Animer en Vidéo</span>
+              </button>
+            </form>
+
+            <!-- Form for img2img -->
+            <form id="form-img2img" class="pipeline-form">
+              <div class="form-group">
+                <label>Image Source de Référence (ex: Bas de compression)</label>
+                <div class="media-selector-box" id="i2i-source-preview">
+                  <div class="empty-state-selector">
+                    <span>🖼️ Glissez une image ici ou cliquez pour choisir dans la galerie</span>
+                  </div>
+                </div>
+                <input type="hidden" id="i2i-image-path">
+                <div class="selector-actions">
+                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2i-image-path', 'i2i-source-preview', 'image')">Galerie</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('i2i-image-path', 'i2i-source-preview', 'image')">Upload</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('i2i-image-path')">✂️ Recadrer</button>
+                </div>
+              </div>
+
+              <div class="form-group inpaint-mask-section">
+                <div class="form-label-row">
+                  <label>🖌️ Masque de Retouche (Inpainting Optionnel)</label>
+                  <div class="checkbox-row" style="margin-bottom:0;">
+                    <input type="checkbox" id="i2i-enable-mask" onchange="toggleMaskSection(this.checked)">
+                    <label for="i2i-enable-mask" style="font-size:0.85rem; cursor:pointer;">Activer le masque</label>
+                  </div>
+                </div>
+                <div id="i2i-mask-controls" style="display:none; margin-top:8px;">
+                  <div class="mask-preview-row">
+                    <div class="mask-preview-thumb" id="i2i-mask-preview">
+                      <span class="mask-placeholder-text">Aucun tracé</span>
+                    </div>
+                    <div class="mask-actions-buttons">
+                      <button type="button" class="btn-secondary btn-sm" onclick="openMaskModal()">🖌️ Dessiner / Modifier</button>
+                      <button type="button" class="btn-secondary btn-sm" onclick="clearCurrentMask()">🗑️ Effacer</button>
+                    </div>
+                  </div>
+                  <input type="hidden" id="i2i-mask-data">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="i2i-prompt">Prompt de transformation / nouvelle scène</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('i2i-prompt')">📜 Historique</button>
+                </div>
+                <div class="textarea-wrapper">
+                  <textarea id="i2i-prompt" rows="3" placeholder="Ex: An athletic female pickleball player wearing the pink compression socks, holding a paddle on outdoor sunny court, 8k uhd photorealistic"></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('i2i-prompt')">🧠 Optimiser</button>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="i2i-strength">Force de transformation (Denoise) : <span id="i2i-strength-val">0.70</span></label>
+                  <input type="range" id="i2i-strength" min="0.1" max="1.0" step="0.05" value="0.70" oninput="document.getElementById('i2i-strength-val').innerText = this.value">
+                </div>
+                <div class="form-group col">
+                  <label for="i2i-mode">Moteur de Génération</label>
+                  <select id="i2i-mode" onchange="toggleI2iMode()">
+                    <option value="cloud" selected>🚀 RunPod Cloud (Flux 1 Schnell)</option>
+                    <option value="local">💻 Local GPU / Diffusers (RTX 2080 / CPU)</option>
+                  </select>
+                </div>
+                <div class="form-group col" id="i2i-local-model-group" style="display: none;">
+                  <label for="i2i-local-model">Modèle Local (HuggingFace)</label>
+                  <select id="i2i-local-model">
+                    <option value="stabilityai/sdxl-turbo" selected>SDXL Turbo (1-4 steps)</option>
+                    <option value="ByteDance/SDXL-Lightning">SDXL Lightning (4-8 steps)</option>
+                    <option value="runwayml/stable-diffusion-v1-5">Stable Diffusion 1.5</option>
+                    <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL Base 1.0</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="i2i-format">Dimensions</label>
+                  <select id="i2i-format">
+                    <option value="auto" selected>Conserver ratio d'origine (Auto)</option>
+                    <option value="1024x1024">Carré (1024 x 1024)</option>
+                    <option value="768x1344">Portrait 9:16 (768 x 1344)</option>
+                    <option value="1344x768">Paysage 16:9 (1344 x 768)</option>
+                    <option value="512x512">Rapide 512x512 (Idéal Turbo)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="i2i-steps">Pas d'inférence (Steps)</label>
+                  <input type="number" id="i2i-steps" value="4" min="1" max="50">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="i2i-output">Nom du fichier image résultat</label>
+                <input type="text" id="i2i-output" value="pickleball_player.png">
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow">
+                <span id="i2i-submit-text">🎨 Transformer l'Image (Image-to-Image)</span>
+              </button>
+            </form>
+
+            <!-- Form for faceswap -->
+            <form id="form-faceswap" class="pipeline-form">
+              <div class="form-row">
+                <div class="form-group col">
+                  <label>1. Visage Source (Photo)</label>
+                  <div class="media-selector-box square" id="fs-source-preview" onclick="if(!document.getElementById('fs-source-path').value) openMediaPicker('fs-source-path', 'fs-source-preview', 'image')">
+                    <div class="empty-state-selector"><span>👤 Choisir visage</span></div>
+                  </div>
+                  <input type="hidden" id="fs-source-path">
+                  <div class="selector-actions">
+                    <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('fs-source-path', 'fs-source-preview', 'image')">Galerie</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('fs-source-path', 'fs-source-preview', 'image')">Upload</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('fs-source-path')">✂️ Recadrer</button>
+                  </div>
+                </div>
+
+                <div class="form-group col">
+                  <label>2. Média Cible (Image ou Vidéo)</label>
+                  <div class="media-selector-box square" id="fs-target-preview" onclick="if(!document.getElementById('fs-target-path').value) openMediaPicker('fs-target-path', 'fs-target-preview', 'all')">
+                    <div class="empty-state-selector"><span>🎯 Choisir cible</span></div>
+                  </div>
+                  <input type="hidden" id="fs-target-path">
+                  <div class="selector-actions">
+                    <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('fs-target-path', 'fs-target-preview', 'all')">Galerie</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('fs-target-path', 'fs-target-preview', 'all')">Upload</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('fs-target-path')">✂️ Recadrer</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label class="checkbox-label" style="margin-top: 15px;">
+                    <input type="checkbox" id="fs-restore-face" checked>
+                    <span>Restauration HD du visage (GFPGAN / CodeFormer)</span>
+                  </label>
+                </div>
+                <div class="form-group col">
+                  <label for="fs-face-index">Index du visage</label>
+                  <input type="number" id="fs-face-index" value="0" min="0" max="10">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="fs-output">Nom du fichier de sortie</label>
+                <input type="text" id="fs-output" value="output_faceswap.mp4">
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow">
+                <span>🎭 Appliquer le Face Swap</span>
+              </button>
+            </form>
+
+            <!-- Form for vid2vid -->
+            <form id="form-vid2vid" class="pipeline-form">
+              <div class="form-group">
+                <label>Vidéo Source</label>
+                <div class="media-selector-box" id="v2v-source-preview" onclick="if(!document.getElementById('v2v-video-path').value) openMediaPicker('v2v-video-path', 'v2v-source-preview', 'video')">
+                  <div class="empty-state-selector"><span>🎞️ Glissez une vidéo ou choisissez depuis la galerie</span></div>
+                </div>
+                <input type="hidden" id="v2v-video-path">
+                <div class="selector-actions">
+                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('v2v-video-path', 'v2v-source-preview', 'video')">Galerie</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('v2v-video-path', 'v2v-source-preview', 'video')">Upload</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('v2v-video-path')">✂️ Recadrer</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="v2v-prompt">Prompt de restyling / transformation</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('v2v-prompt')">📜 Historique</button>
+                </div>
+                <textarea id="v2v-prompt" rows="3" placeholder="Ex: Anime style watercolor animation, vibrant colors, gentle movement"></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="v2v-video-model">Moteur Vidéo</label>
+                  <select id="v2v-video-model">
+                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Fluide / HD)</option>
+                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-rapide / DiT)</option>
+                    <option value="minimax-h3">🌊 MiniMax-H3 (Hailuo 3 / 2K & Audio)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="v2v-strength">Force de transformation : <span id="v2v-strength-val">0.65</span></label>
+                  <input type="range" id="v2v-strength" min="0.1" max="1.0" step="0.05" value="0.65" oninput="document.getElementById('v2v-strength-val').innerText = this.value">
+                </div>
+                <div class="form-group col">
+                  <label for="v2v-resolution">Résolution</label>
+                  <select id="v2v-resolution">
+                    <option value="720p" selected>720p</option>
+                    <option value="480p">480p</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="v2v-output">Nom du fichier de sortie</label>
+                <input type="text" id="v2v-output" value="output_vid2vid.mp4">
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow">
+                <span>🎞️ Restyler la Vidéo (Vid2Vid)</span>
+              </button>
+            </form>
+
+            <!-- Form for txt2img -->
+            <form id="form-txt2img" class="pipeline-form">
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="t2i-prompt">Prompt pour l'image</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('t2i-prompt')">📜 Historique</button>
+                </div>
+                <div class="textarea-wrapper">
+                  <textarea id="t2i-prompt" rows="4" placeholder="Ex: Close up portrait of an elegant woman relaxing in modern lounge, warm sunlight, 8k uhd photorealistic"></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('t2i-prompt')">🧠 Optimiser</button>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="t2i-mode">Moteur de Génération</label>
+                  <select id="t2i-mode" onchange="toggleT2iMode()">
+                    <option value="cloud" selected>🚀 RunPod Cloud (Flux 1 Schnell)</option>
+                    <option value="local">💻 Local GPU / Diffusers (RTX 2080 / CPU)</option>
+                  </select>
+                </div>
+                <div class="form-group col" id="t2i-local-model-group" style="display: none;">
+                  <label for="t2i-local-model">Modèle Local (HuggingFace / Diffusers)</label>
+                  <select id="t2i-local-model">
+                    <option value="stabilityai/sdxl-turbo" selected>SDXL Turbo (1-4 steps, ultra-rapide)</option>
+                    <option value="ByteDance/SDXL-Lightning">SDXL Lightning (4-8 steps, HD)</option>
+                    <option value="runwayml/stable-diffusion-v1-5">Stable Diffusion 1.5</option>
+                    <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL Base 1.0</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="t2i-format">Dimensions</label>
+                  <select id="t2i-format">
+                    <option value="1024x1024" selected>Carré (1024 x 1024)</option>
+                    <option value="768x1344">Portrait 9:16 (768 x 1344)</option>
+                    <option value="1344x768">Paysage 16:9 (1344 x 768)</option>
+                    <option value="512x512">Rapide 512x512 (Idéal Turbo)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="t2i-steps">Pas d'inférence (Steps)</label>
+                  <input type="number" id="t2i-steps" value="4" min="1" max="50">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="t2i-output">Nom du fichier image</label>
+                <input type="text" id="t2i-output" value="flux_image.png">
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow">
+                <span id="t2i-submit-text">✨ Générer l'Image</span>
+              </button>
+            </form>
+
+            <!-- Form for enhance -->
+            <form id="form-enhance" class="pipeline-form">
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="enh-prompt">Prompt brut à enrichir</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('enh-prompt')">📜 Historique</button>
+                </div>
+                <textarea id="enh-prompt" rows="3" placeholder="Ex: a woman wearing black compression socks in an airplane"></textarea>
+              </div>
+              <button type="submit" class="btn-primary btn-glow">
+                <span>🧠 Enrichir le Prompt</span>
+              </button>
+              <div class="form-group" style="margin-top: 20px;">
+                <label>Résultat enrichi :</label>
+                <div class="enhanced-result-box" id="enh-result">Le prompt optimisé apparaîtra ici...</div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Right Column: Live Job Activity & Preview -->
+          <div class="card glass-card studio-live-panel">
+            <div class="live-header">
+              <h3>⚡ Aperçu & Activité en Direct</h3>
+              <span class="badge" id="live-job-status-badge">En veille</span>
+            </div>
+
+            <div class="live-preview-container" id="live-preview-box">
+              <div class="preview-placeholder">
+                <div class="pulsing-circle"></div>
+                <p>Aucun job en cours d'exécution.</p>
+                <small>Lancez une génération depuis le panneau de gauche pour voir la progression et le résultat ici.</small>
+              </div>
+            </div>
+
+            <div class="live-terminal-logs" id="live-logs-container">
+              <div class="log-line info">✨ RunPod Studio prêt. Choisissez un pipeline et lancez votre création.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: MEDIA GALLERY -->
+      <section id="tab-gallery" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Gestionnaire de Médias</h2>
+            <p class="subtitle">Tous vos fichiers entrants, sources et vidéos générées en un seul endroit.</p>
+          </div>
+          <div class="gallery-controls">
+            <div class="filter-group">
+              <button class="filter-btn active" data-filter="all">Tous</button>
+              <button class="filter-btn" data-filter="videos">🎬 Vidéos</button>
+              <button class="filter-btn" data-filter="images">🖼️ Images</button>
+            </div>
+            <button class="btn-primary" onclick="document.getElementById('file-upload-input').click()">
+              <span>⬆️ Importer un Média</span>
+            </button>
+            <input type="file" id="file-upload-input" style="display:none;" multiple accept="image/*,video/*" onchange="handleFileUpload(event)">
+          </div>
+        </div>
+
+        <!-- Drag & drop zone -->
+        <div class="dropzone" id="gallery-dropzone">
+          <div class="dropzone-content">
+            <span class="drop-icon">📥</span>
+            <p>Glissez-déposez vos images ou vidéos ici pour les importer dans la bibliothèque</p>
+          </div>
+        </div>
+
+        <!-- Media Grid -->
+        <div class="media-grid" id="media-grid-container">
+          <!-- Dynamically populated cards -->
+        </div>
+      </section>
+
+      <!-- TAB 3: PROMPTS LIBRARY & HISTORY -->
+      <section id="tab-prompts" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Bibliothèque & Historique des Prompts</h2>
+            <p class="subtitle">Retrouvez, filtrez, marquez vos favoris et réutilisez facilement tous vos prompts.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-primary" onclick="openNewPromptModal()">
+              <span>➕ Nouveau Prompt</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="prompts-toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="prompts-search-input" placeholder="Rechercher un prompt..." oninput="filterPrompts()">
+          </div>
+          <div class="filter-pills">
+            <button class="pill-btn active" data-prompt-filter="all" onclick="setPromptFilter('all')">Tous (<span id="count-all-prompts">0</span>)</button>
+            <button class="pill-btn" data-prompt-filter="favorites" onclick="setPromptFilter('favorites')">⭐ Favoris</button>
+            <button class="pill-btn" data-prompt-filter="txt2vid" onclick="setPromptFilter('txt2vid')">🎬 Text-to-Video</button>
+            <button class="pill-btn" data-prompt-filter="img2vid" onclick="setPromptFilter('img2vid')">🖼️ Image-to-Video</button>
+            <button class="pill-btn" data-prompt-filter="vid2vid" onclick="setPromptFilter('vid2vid')">🎞️ Vid2Vid</button>
+            <button class="pill-btn" data-prompt-filter="txt2img" onclick="setPromptFilter('txt2img')">✨ Flux</button>
+            <button class="pill-btn" data-prompt-filter="enhanced" onclick="setPromptFilter('enhanced')">🧠 Optimisés</button>
+          </div>
+        </div>
+
+        <div class="prompts-grid" id="prompts-grid-container">
+          <!-- Prompts dynamically populated -->
+        </div>
+      </section>
+
+      <!-- TAB 4: JOBS & HISTORY -->
+      <section id="tab-jobs" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Historique & Suivi des Jobs</h2>
+            <p class="subtitle">Consultez l'historique complet des exécutions, temps de calcul et métriques.</p>
+          </div>
+          <button class="btn-secondary" onclick="clearCompletedJobs()">Effacer l'historique</button>
+        </div>
+
+        <div class="jobs-list" id="jobs-list-container">
+          <!-- Dynamically populated job cards -->
+        </div>
+      </section>
+
+      <!-- TAB 5: SETTINGS -->
+      <section id="tab-settings" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Paramètres & Configuration RunPod</h2>
+            <p class="subtitle">Gérez vos clés d'authentification et configurez vos endpoints d'IA par défaut.</p>
+          </div>
+        </div>
+
+        <!-- Account Balance & Status Card -->
+        <div class="card glass-card account-status-card">
+          <div class="account-status-header">
+            <div class="account-title-group">
+              <div class="account-avatar">⚡</div>
+              <div>
+                <h3>Compte & Facturation RunPod</h3>
+                <span class="account-sub-email" id="settings-account-email">Chargement du compte...</span>
+              </div>
+            </div>
+            <div class="account-header-actions">
+              <a href="https://www.runpod.io/console/user/billing" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-sm">
+                <span>🔗 Console RunPod</span>
+              </a>
+              <button type="button" class="btn-secondary btn-sm" onclick="fetchBalance(true)">
+                <span class="refresh-icon">🔄</span> Actualiser
+              </button>
+            </div>
+          </div>
+
+          <div class="balance-grid">
+            <div class="balance-stat-card primary">
+              <span class="stat-title">Solde Disponible</span>
+              <div class="stat-number-wrapper">
+                <span class="stat-number" id="settings-balance-val">--</span>
+                <span class="stat-curr">$ USD</span>
+              </div>
+              <span class="stat-note">Prêt pour vos générations IA</span>
+            </div>
+
+            <div class="balance-stat-card">
+              <span class="stat-title">Identifiant Compte</span>
+              <span class="stat-code" id="settings-account-id">--</span>
+              <span class="stat-note">RunPod User ID</span>
+            </div>
+
+            <div class="balance-stat-card">
+              <span class="stat-title">État de la Connexion</span>
+              <div class="stat-badge-connected" id="settings-connection-status">
+                <span class="status-dot online"></span> Connecté
+              </div>
+              <span class="stat-note" id="settings-balance-time">Vérifié à l'instant</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass-card settings-card">
+          <form id="form-settings" onsubmit="saveSettings(event)">
+            <div class="form-group">
+              <label for="setting-api-key">Clé API RunPod (RUNPOD_API_KEY)</label>
+              <input type="password" id="setting-api-key" placeholder="rpa_xxxxxxxxxxxxxxxxxxxxxxxx">
+              <small class="help-text">Obtenue depuis votre console RunPod dans <em>User Settings → API Keys</em>.</small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col">
+                <label for="setting-wan-endpoint">Endpoint Wan 2.5</label>
+                <input type="text" id="setting-wan-endpoint" value="wan-2-5">
+              </div>
+              <div class="form-group col">
+                <label for="setting-ltx-endpoint">Endpoint LTX-Video 2.5</label>
+                <input type="text" id="setting-ltx-endpoint" value="ltx-video-2-5">
+              </div>
+              <div class="form-group col">
+                <label for="setting-minimax-endpoint">Endpoint MiniMax-H3 (Hailuo 3)</label>
+                <input type="text" id="setting-minimax-endpoint" value="minimax-h3">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col">
+                <label for="setting-flux-endpoint">Endpoint Flux (Image)</label>
+                <input type="text" id="setting-flux-endpoint" value="black-forest-labs-flux-1-schnell">
+              </div>
+              <div class="form-group col">
+                <label for="setting-faceswap-endpoint">Endpoint Face Swap</label>
+                <input type="text" id="setting-faceswap-endpoint" value="1peyap2qc3tx31">
+              </div>
+              <div class="form-group col">
+                <label for="setting-llm-endpoint">Endpoint LLM Qwen3</label>
+                <input type="text" id="setting-llm-endpoint" value="qwen3-32b-awq">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="setting-local-model">Modèle Diffusers Local par défaut (HuggingFace ID)</label>
+              <input type="text" id="setting-local-model" value="stabilityai/sdxl-turbo" placeholder="ex: stabilityai/sdxl-turbo, ByteDance/SDXL-Lightning">
+              <small class="help-text">Modèle chargé sur la RTX 2080 en mode local.</small>
+            </div>
+
+            <button type="submit" class="btn-primary">
+              <span>💾 Enregistrer les Paramètres</span>
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: Media Viewer / Player -->
+  <div class="modal" id="media-modal" onclick="closeMediaModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modal-title">media.mp4</h3>
+        <button class="modal-close" onclick="closeMediaModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Media inserted dynamically -->
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <!-- Action buttons (Download, Use as Source, Delete) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Media Picker for forms -->
+  <div class="modal" id="picker-modal" onclick="closePickerModal(event)">
+    <div class="modal-content picker-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="picker-modal-title">Sélectionner un Média Source</h3>
+        <button class="modal-close" onclick="closePickerModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="search-box" style="margin-bottom: 16px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="picker-search-input" placeholder="Rechercher par nom..." oninput="filterPickerMedia()">
+        </div>
+        <div class="media-grid picker-grid" id="picker-grid-container">
+          <!-- Picker items dynamically filled -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Prompt Quick Selector for Textareas -->
+  <div class="modal" id="prompt-selector-modal" onclick="closePromptSelectorModal(event)">
+    <div class="modal-content prompt-modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>📜 Choisir un Prompt dans l'Historique</h3>
+        <button class="modal-close" onclick="closePromptSelectorModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="search-box" style="margin-bottom: 16px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="prompt-modal-search" placeholder="Filtrer parmi vos prompts..." oninput="filterSelectorPrompts()">
+        </div>
+        <div class="prompt-selector-list" id="prompt-selector-list-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add New Prompt -->
+  <div class="modal" id="new-prompt-modal" onclick="closeNewPromptModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>➕ Ajouter un Prompt à la Bibliothèque</h3>
+        <button class="modal-close" onclick="closeNewPromptModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-new-prompt" onsubmit="submitNewPrompt(event)">
+          <div class="form-group">
+            <label for="new-prompt-text">Texte du Prompt</label>
+            <textarea id="new-prompt-text" rows="4" required placeholder="Saisissez la description du prompt..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="new-prompt-category">Catégorie / Pipeline</label>
+            <select id="new-prompt-category">
+              <option value="txt2vid" selected>🎬 Text-to-Video</option>
+              <option value="img2vid">🖼️ Image-to-Video</option>
+              <option value="img2img">🎨 Image-to-Image</option>
+              <option value="vid2vid">🎞️ Video-to-Video</option>
+              <option value="txt2img">✨ Text-to-Image (Flux)</option>
+              <option value="general">Général / Autre</option>
+            </select>
+          </div>
+          <div class="modal-footer" style="padding-top: 15px;">
+            <button type="button" class="btn-secondary" onclick="closeNewPromptModal()">Annuler</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Crop & Trim Tool -->
+  <div class="modal" id="crop-modal" onclick="closeCropModal(event)">
+    <div class="modal-content crop-modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="crop-modal-title">✂️ Recadrer le Média (Optimisé 512x512 Face Swap)</h3>
+        <button class="modal-close" onclick="closeCropModal()">&times;</button>
+      </div>
+      <div class="modal-body crop-modal-body">
+        <div class="crop-layout">
+          <!-- Left: Viewport with overlay crop box -->
+          <div class="crop-viewport-card">
+            <div class="crop-viewport-container" id="crop-viewport-container">
+              <div id="crop-media-wrapper" class="crop-media-wrapper">
+                <!-- Video or Image loaded dynamically -->
+              </div>
+              <div class="crop-box" id="crop-box">
+                <div class="crop-handle nw" data-dir="nw"></div>
+                <div class="crop-handle ne" data-dir="ne"></div>
+                <div class="crop-handle sw" data-dir="sw"></div>
+                <div class="crop-handle se" data-dir="se"></div>
+                <div class="crop-grid-lines"></div>
+              </div>
+            </div>
+            <div class="crop-viewport-controls" id="crop-video-controls" style="display: none;">
+              <button type="button" class="btn-secondary btn-sm" id="btn-crop-play-pause" onclick="toggleCropPlay()">▶ Lecture</button>
+              <input type="range" id="crop-video-seek" min="0" max="100" value="0" step="0.1" oninput="seekCropVideo(this.value)">
+              <span class="crop-time-label" id="crop-time-label">0:00 / 0:00</span>
+            </div>
+          </div>
+
+          <!-- Right: Controls, Ratios, Resolutions & Destination -->
+          <div class="crop-settings-panel">
+            <div class="crop-group">
+              <label class="crop-label">Format / Ratio</label>
+              <div class="crop-preset-pills">
+                <button type="button" class="pill-btn active" data-ratio="1:1" onclick="setCropRatio('1:1')">1:1 (Carré Face Swap)</button>
+                <button type="button" class="pill-btn" data-ratio="9:16" onclick="setCropRatio('9:16')">9:16 (Portrait)</button>
+                <button type="button" class="pill-btn" data-ratio="16:9" onclick="setCropRatio('16:9')">16:9 (Paysage)</button>
+                <button type="button" class="pill-btn" data-ratio="free" onclick="setCropRatio('free')">Libre</button>
+              </div>
+            </div>
+
+            <div class="crop-group">
+              <label class="crop-label">Résolution de sortie cible</label>
+              <select id="crop-target-resolution" class="crop-select">
+                <option value="512x512" selected>512 x 512 px (Recommandé Face Swap & Vitesse)</option>
+                <option value="768x768">768 x 768 px (Haute Définition)</option>
+                <option value="1024x1024">1024 x 1024 px (Full HD)</option>
+                <option value="original">Conserver la taille exacte recadrée</option>
+              </select>
+            </div>
+
+            <div class="crop-group">
+              <label class="crop-label">Coordonnées du recadrage</label>
+              <div class="crop-coords-grid">
+                <div class="coord-box"><span>X :</span> <strong id="crop-val-x">0</strong></div>
+                <div class="coord-box"><span>Y :</span> <strong id="crop-val-y">0</strong></div>
+                <div class="coord-box"><span>Larg :</span> <strong id="crop-val-w">512</strong></div>
+                <div class="coord-box"><span>Haut :</span> <strong id="crop-val-h">512</strong></div>
+              </div>
+            </div>
+
+            <div class="crop-group">
+              <label class="crop-label">Action après recadrage</label>
+              <select id="crop-target-action" class="crop-select">
+                <option value="faceswap-target" selected>🎯 Sélectionner comme Cible Face Swap</option>
+                <option value="faceswap-source">👤 Sélectionner comme Visage Source</option>
+                <option value="img2img-source">🎨 Sélectionner pour Image-to-Image</option>
+                <option value="img2vid-source">🖼️ Sélectionner pour Image-to-Video</option>
+                <option value="vid2vid-source">🎞️ Sélectionner pour Video-to-Video</option>
+                <option value="gallery">📁 Enregistrer uniquement dans la Galerie</option>
+              </select>
+            </div>
+
+            <div class="crop-info-box">
+              <span>💡 <strong>Astuce :</strong> Recadrer votre image ou vidéo permet d'ajuster précisément la zone d'intérêt avant transformation !</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer crop-modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeCropModal()">Annuler</button>
+        <button type="button" class="btn-primary btn-glow" id="btn-submit-crop" onclick="executeCrop()">
+          <span id="btn-crop-text">✂️ Valider et Recadrer</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Inpainting Mask Painter -->
+  <div class="modal" id="mask-modal" onclick="closeMaskModal(event)">
+    <div class="modal-content mask-modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="mask-modal-title">🖌️ Éditeur de Masque Inpainting</h3>
+        <button class="modal-close" onclick="closeMaskModal()">&times;</button>
+      </div>
+      <div class="modal-body mask-modal-body">
+        <div class="mask-toolbar">
+          <div class="mask-tool-group">
+            <button type="button" class="pill-btn active" id="btn-mask-brush" onclick="setMaskTool('brush')">🖌️ Pinceau (Masquer)</button>
+            <button type="button" class="pill-btn" id="btn-mask-eraser" onclick="setMaskTool('eraser')">🧹 Gomme</button>
+          </div>
+          <div class="mask-tool-group brush-slider-group">
+            <label for="mask-brush-size">Taille : <span id="mask-brush-size-val">35px</span></label>
+            <input type="range" id="mask-brush-size" min="5" max="150" value="35" oninput="updateBrushSize(this.value)">
+          </div>
+          <div class="mask-tool-group">
+            <button type="button" class="btn-secondary btn-sm" onclick="invertMaskCanvas()">🔄 Inverser</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="clearMaskCanvas()">🗑️ Tout Effacer</button>
+          </div>
+        </div>
+
+        <div class="mask-canvas-container" id="mask-canvas-container">
+          <canvas id="mask-bg-canvas"></canvas>
+          <canvas id="mask-draw-canvas"></canvas>
+          <div id="mask-brush-cursor" class="mask-brush-cursor"></div>
+        </div>
+
+        <div class="crop-info-box" style="margin-top: 10px;">
+          <span>💡 <strong>Astuce :</strong> Peignez en blanc/rose sur la zone que vous souhaitez <strong>modifier ou remplacer</strong>. La zone non masquée restera strictement préservée !</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeMaskModal()">Annuler</button>
+        <button type="button" class="btn-primary btn-glow" onclick="saveMaskAndClose()">
+          <span>✓ Valider le Masque</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js?v=11"></script>
+</body>
+</html>

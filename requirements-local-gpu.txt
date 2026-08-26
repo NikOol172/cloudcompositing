@@ -1,0 +1,20 @@
+# Local GPU dependencies (RTX 2080 / CUDA or CPU)
+# Install with: pip install -r requirements-local-gpu.txt
+# For CUDA PyTorch: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# PyTorch & Diffusers for Local Text-to-Image
+torch>=2.1.0
+torchvision>=0.16.0
+diffusers>=0.28.0
+transformers>=4.40.0
+accelerate>=0.29.0
+safetensors>=0.4.0
+
+# ONNX Runtime & InsightFace for Local FaceSwap
+# Note: if using CUDA GPU, install onnxruntime-gpu (uninstall onnxruntime first)
+# pip install onnxruntime-gpu
+onnxruntime>=1.17.0
+insightface>=0.7.3
+opencv-python>=4.8.0
+numpy>=1.24.0
+pillow>=10.0.0

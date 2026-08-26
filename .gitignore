@@ -1,0 +1,55 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv*
+venv/
+**/venv/
+ENV/
+env/
+
+# Deep Learning Models & Heavy weights
+models/
+*.onnx
+*.safetensors
+*.bin
+*.pth
+*.pt
+*.ckpt
+
+# Media outputs & generated assets
+outputs/
+media/
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.avi
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+
+# Local runtime data & history
+prompts_history.json
+*.log
+
+# Secrets & Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE / System
+.agents/
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
