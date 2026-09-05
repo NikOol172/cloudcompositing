@@ -51,6 +51,14 @@ pub enum Commands {
     #[command(name = "serve", alias = "ui")]
     Serve(ServeArgs),
 
+    /// Générer une voix à partir d'un texte (Text-to-Speech : Kokoro-82M ou XTTS-v2).
+    #[command(name = "tts")]
+    Tts(TtsArgs),
+
+    /// Entraîner un modèle LoRA personnalisé sur un jeu d'images (Fine-Tuning local GPU).
+    #[command(name = "train-lora", alias = "lora-train")]
+    TrainLora(TrainLoraArgs),
+
     /// Tester l'enrichissement d'un prompt via le LLM (Qwen3).
     #[command(name = "enhance")]
     Enhance(EnhanceArgs),
@@ -346,4 +354,70 @@ pub struct ServeArgs {
     /// Ouvrir automatiquement le navigateur par défaut.
     #[arg(long, default_value_t = true)]
     pub open: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct TtsArgs {
+    /// Texte à synthétiser en voix.
+    #[arg(short, long)]
+    pub text: String,
+
+    /// Moteur de synthèse vocale (kokoro ou xtts).
+    #[arg(short, long, default_value = "kokoro")]
+    pub engine: String,
+
+    /// Identifiant de la voix (ex: ff_siwis, af_bella, etc.).
+    #[arg(short, long, default_value = "")]
+    pub voice: String,
+
+    /// Langue de diction (fr, en, es, de, it, etc.).
+    #[arg(short, long, default_value = "fr")]
+    pub language: String,
+
+    /// Vitesse de diction (0.5 à 2.0).
+    #[arg(long, default_value_t = 1.0)]
+    pub speed: f32,
+
+    /// Fichier audio de référence pour clonage de voix (XTTS-v2).
+    #[arg(long)]
+    pub speaker_wav: Option<String>,
+
+    /// Chemin de sortie du fichier audio WAV.
+    #[arg(short, long, default_value = "output_tts.wav")]
+    pub output: PathBuf,
+}
+
+#[derive(Args, Debug)]
+pub struct TrainLoraArgs {
+    /// Répertoire contenant les images du dataset d'entraînement.
+    #[arg(short, long)]
+    pub dataset: PathBuf,
+
+    /// Nom de sortie du fichier LoRA (ex: 'mon_style.safetensors').
+    #[arg(short, long)]
+    pub output: String,
+
+    /// Mot déclencheur / Prompt d'instance (ex: 'a photo of sks person').
+    #[arg(short, long, default_value = "a photo of sks person")]
+    pub prompt: String,
+
+    /// Modèle de base pour l'entraînement (SD1.5 ou SDXL).
+    #[arg(long, default_value = "runwayml/stable-diffusion-v1-5")]
+    pub base_model: String,
+
+    /// Nombre total d'étapes d'entraînement (steps).
+    #[arg(long, default_value_t = 500)]
+    pub steps: u32,
+
+    /// Taux d'apprentissage (Learning Rate).
+    #[arg(long, default_value_t = 1e-4)]
+    pub lr: f32,
+
+    /// Rang LoRA (Rank/Dimension: 4, 8, 16, 32).
+    #[arg(long, default_value_t = 8)]
+    pub rank: u32,
+
+    /// Résolution des images carrées d'entraînement (512 ou 1024).
+    #[arg(long, default_value_t = 512)]
+    pub resolution: u32,
 }

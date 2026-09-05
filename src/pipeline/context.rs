@@ -19,6 +19,8 @@ pub struct PipelineContext {
     pub video_url: Option<String>,
     /// Chemin du fichier vidéo téléchargé sur le disque.
     pub downloaded_video_path: Option<PathBuf>,
+    /// Chemin du fichier audio généré ou téléchargé sur le disque.
+    pub downloaded_audio_path: Option<PathBuf>,
     /// Données et métadonnées arbitraires stockées par les différentes étapes.
     pub metadata: HashMap<String, Value>,
 }

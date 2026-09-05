@@ -22,6 +22,11 @@ pub struct TextToImageStage {
     pub timeout: Duration,
     pub local: bool,
     pub local_model: Option<String>,
+    pub lora: Option<String>,
+    pub lora_scale: Option<f32>,
+    pub controlnet_image: Option<String>,
+    pub controlnet_type: Option<String>,
+    pub controlnet_scale: Option<f32>,
 }
 
 impl Default for TextToImageStage {
@@ -36,6 +41,11 @@ impl Default for TextToImageStage {
             timeout: Duration::from_secs(300),
             local: false,
             local_model: None,
+            lora: None,
+            lora_scale: None,
+            controlnet_image: None,
+            controlnet_type: None,
+            controlnet_scale: None,
         }
     }
 }
@@ -75,6 +85,24 @@ impl TextToImageStage {
         self.local_model = Some(model.into());
         self
     }
+
+    pub fn with_lora(mut self, lora: Option<String>, scale: Option<f32>) -> Self {
+        self.lora = lora;
+        self.lora_scale = scale;
+        self
+    }
+
+    pub fn with_controlnet(
+        mut self,
+        image: Option<String>,
+        c_type: Option<String>,
+        scale: Option<f32>,
+    ) -> Self {
+        self.controlnet_image = image;
+        self.controlnet_type = c_type;
+        self.controlnet_scale = scale;
+        self
+    }
 }
 
 #[async_trait]
@@ -111,9 +139,16 @@ impl Stage for TextToImageStage {
                 self.num_inference_steps,
                 seed
             );
+            if let Some(ref lora) = self.lora {
+                println!("  LoRA: {} (Scale: {}x)", style(lora).yellow(), self.lora_scale.unwrap_or(0.8));
+            }
+            if let Some(ref cn_img) = self.controlnet_image {
+                println!("  ControlNet: {} sur '{}' (Scale: {}x)", style(self.controlnet_type.as_deref().unwrap_or("canny")).green(), cn_img, self.controlnet_scale.unwrap_or(0.8));
+            }
             println!("  Lancement du moteur local diffusers...");
 
-            let mut cmd = tokio::process::Command::new("python3");
+            let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+            crate::utils::configure_python_command(&mut cmd);
             cmd.args([
                 "src/txt2img_engine.py",
                 "--prompt",
@@ -134,6 +169,23 @@ impl Stage for TextToImageStage {
 
             if let Some(cfg) = self.guidance_scale {
                 cmd.args(["--guidance-scale", &cfg.to_string()]);
+            }
+
+            if let Some(ref lora) = self.lora {
+                cmd.args(["--lora", lora]);
+                if let Some(scale) = self.lora_scale {
+                    cmd.args(["--lora-scale", &scale.to_string()]);
+                }
+            }
+
+            if let Some(ref cn_img) = self.controlnet_image {
+                cmd.args(["--controlnet-image", cn_img]);
+                if let Some(ref cn_type) = self.controlnet_type {
+                    cmd.args(["--controlnet-type", cn_type]);
+                }
+                if let Some(scale) = self.controlnet_scale {
+                    cmd.args(["--controlnet-scale", &scale.to_string()]);
+                }
             }
 
             if let Ok(home) = std::env::var("HOME") {

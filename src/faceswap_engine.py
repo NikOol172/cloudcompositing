@@ -8,6 +8,12 @@ import os
 import sys
 import site
 
+# Configure caches on Drive D: to prevent filling Drive C:
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.environ["HF_HOME"] = os.path.join(base_dir, ".hf_cache")
+os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(base_dir, ".hf_cache", "hub")
+os.environ["TORCH_HOME"] = os.path.join(base_dir, ".torch_cache")
+
 # Ensure all user site-packages and system dist-packages are in sys.path
 for p in [
     site.getusersitepackages(),

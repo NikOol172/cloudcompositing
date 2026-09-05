@@ -30,6 +30,14 @@ Application Rust modulaire et asynchrone pour orchestrer des pipelines d'IA gén
   - Prise en charge sur le **Cloud RunPod (Flux / SDXL)** et en **Local GPU (Diffusers / RTX 2080)**.
 - **Text-to-Image (`txt2img`)** :
   - Génération rapide d'images avec personnalisation des dimensions, du seed et des steps.
+- **Studio d'Entraînement LoRA (`train-lora` / Web Studio)** :
+  - Fine-tuning de concepts personnalisés (visages, produits commerciaux, styles artistiques) directement sur GPU local (RTX 2080 8 Go).
+  - Gestionnaire complet de datasets avec drag & drop d'images et auto-légendage intelligent (**Auto-Captioning**).
+  - Optimisations mémoire VRAM avancées : latents VAE et text embeddings pré-mis en cache, précision mixte FP16, accumulation de gradients et export automatique en `.safetensors` immédiatement disponible dans les studios de génération.
+- **Synthèse Vocale Text-to-Speech (`tts`)** :
+  - Synthèse vocale ultra-naturelle en local sur GPU (RTX 2080) avec **Kokoro-82M** (ultra-rapide, français/anglais/multilingue).
+  - Clonage de voix haute fidélité (zero-shot) avec **Coqui XTTS-v2** à partir d'un échantillon audio de référence.
+  - Contrôle précis de la vitesse de diction, choix des voix prédéfinies et lecture audio directe dans le Web Studio.
 - **Enrichissement de Prompt (`enhance`)** :
   - Optimisation des descriptions textuelles via LLM (Qwen3-32B).
 - **Architecture par Étapes (Stages)** :

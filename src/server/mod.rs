@@ -1,7 +1,7 @@
 use crate::client::RunpodClient;
 use crate::pipeline::stages::{
     DownloadStage, FaceSwapStage, ImageToImageStage, ImageToVideoStage, PromptEnhanceStage, TextToImageStage,
-    VideoToVideoStage,
+    TextToSpeechStage, VideoToVideoStage,
 };
 use crate::pipeline::{Pipeline, PipelineContext};
 use axum::{
@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
+use tokio::io::AsyncBufReadExt;
 use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
@@ -25,6 +26,8 @@ pub struct MediaItem {
     pub name: String,
     pub size_bytes: u64,
     pub is_video: bool,
+    #[serde(default)]
+    pub is_audio: bool,
     pub modified: u64,
 }
 
@@ -169,6 +172,15 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
         .route("/api/generate/txt2img", post(generate_txt2img))
         .route("/api/generate/img2img", post(generate_img2img))
         .route("/api/generate/enhance", post(generate_enhance))
+        .route("/api/generate/tts", post(generate_tts))
+        .route("/api/loras", get(list_loras))
+        .route("/api/lora/datasets", get(list_lora_datasets))
+        .route("/api/lora/datasets/:name/upload", post(upload_dataset_images))
+        .route("/api/lora/datasets/:name/image/:image", get(serve_dataset_image))
+        .route("/api/lora/autocaption", post(autocaption_dataset))
+        .route("/api/lora/caption", post(save_dataset_caption))
+        .route("/api/lora/train", post(start_lora_training))
+        .route("/api/network", get(get_network_info))
         .fallback_service(ServeDir::new("web").fallback(get(serve_embedded_fallback)))
         .layer(axum::extract::DefaultBodyLimit::max(500 * 1024 * 1024))
         .layer(
@@ -183,8 +195,11 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
     let url = format!("http://localhost:{}", port);
 
     println!("\n{}", style("🚀 RunPod Studio & Media Manager démarré !").bold().magenta());
-    println!("  • Interface Web : {}", style(&url).cyan().underlined().bold());
-    println!("  • Écoute locale : {}", style(&addr).dim());
+    println!("  • PC Local (Bureau)  : {}", style(&url).cyan().underlined().bold());
+    if let Some(lan_ip) = crate::utils::get_local_lan_ip() {
+        println!("  • Mobile / Wi-Fi     : {}", style(format!("http://{}:{}", lan_ip, port)).green().underlined().bold());
+    }
+    println!("  • Écoute réseau      : {}", style(&addr).dim());
     println!("  • Appuyez sur {} pour quitter.\n", style("Ctrl+C").yellow().bold());
 
     if open_browser {
@@ -214,8 +229,9 @@ async fn list_media(State(state): State<AppState>) -> Json<Vec<MediaItem>> {
                     let ext_lower = ext.to_lowercase();
                     let is_img = matches!(ext_lower.as_str(), "png" | "jpg" | "jpeg" | "webp");
                     let is_vid = matches!(ext_lower.as_str(), "mp4" | "webm" | "mov" | "mkv");
+                    let is_aud = matches!(ext_lower.as_str(), "wav" | "mp3" | "ogg" | "flac" | "m4a" | "aac");
 
-                    if is_img || is_vid {
+                    if is_img || is_vid || is_aud {
                         if let Ok(meta) = entry.metadata().await {
                             let modified = meta
                                 .modified()
@@ -229,6 +245,7 @@ async fn list_media(State(state): State<AppState>) -> Json<Vec<MediaItem>> {
                                     name: name.to_string(),
                                     size_bytes: meta.len(),
                                     is_video: is_vid,
+                                    is_audio: is_aud,
                                     modified,
                                 });
                             }
@@ -242,6 +259,63 @@ async fn list_media(State(state): State<AppState>) -> Json<Vec<MediaItem>> {
     // Sort newest first
     items.sort_by(|a, b| b.modified.cmp(&a.modified));
     Json(items)
+}
+
+#[derive(Serialize)]
+pub struct LoraItem {
+    pub filename: String,
+    pub path: String,
+    pub size_mb: f64,
+}
+
+async fn list_loras(State(state): State<AppState>) -> Json<Vec<LoraItem>> {
+    let loras_dir = state.workspace_dir.join("loras");
+    let mut items = Vec::new();
+
+    if let Ok(entries) = std::fs::read_dir(&loras_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                if ext == "safetensors" || ext == "pt" || ext == "bin" {
+                    let filename = entry.file_name().to_string_lossy().to_string();
+                    let metadata = entry.metadata().ok();
+                    let size_bytes = metadata.map(|m| m.len()).unwrap_or(0);
+                    let size_mb = (size_bytes as f64) / (1024.0 * 1024.0);
+                    items.push(LoraItem {
+                        filename,
+                        path: path.to_string_lossy().to_string(),
+                        size_mb: (size_mb * 10.0).round() / 10.0,
+                    });
+                }
+            }
+        }
+    }
+
+    items.sort_by(|a, b| a.filename.to_lowercase().cmp(&b.filename.to_lowercase()));
+    Json(items)
+}
+
+#[derive(Serialize)]
+pub struct NetworkInfo {
+    pub lan_ip: Option<String>,
+    pub port: u16,
+    pub mobile_url: String,
+}
+
+async fn get_network_info() -> Json<NetworkInfo> {
+    let lan_ip = crate::utils::get_local_lan_ip();
+    let port = 3000;
+    let mobile_url = if let Some(ref ip) = lan_ip {
+        format!("http://{}:{}", ip, port)
+    } else {
+        format!("http://localhost:{}", port)
+    };
+    Json(NetworkInfo {
+        lan_ip,
+        port,
+        mobile_url,
+    })
 }
 
 async fn serve_media(
@@ -1262,6 +1336,11 @@ pub struct Txt2ImgPayload {
     pub output: Option<String>,
     pub local: Option<bool>,
     pub local_model: Option<String>,
+    pub lora: Option<String>,
+    pub lora_scale: Option<f32>,
+    pub controlnet_image: Option<String>,
+    pub controlnet_type: Option<String>,
+    pub controlnet_scale: Option<f32>,
 }
 
 async fn generate_txt2img(
@@ -1336,6 +1415,18 @@ async fn generate_txt2img(
             stage = stage.with_local_model(m.clone());
         }
 
+        if let Some(ref lora) = payload.lora {
+            stage = stage.with_lora(Some(lora.clone()), payload.lora_scale);
+        }
+
+        if payload.controlnet_image.is_some() || payload.controlnet_type.is_some() {
+            stage = stage.with_controlnet(
+                payload.controlnet_image.clone(),
+                payload.controlnet_type.clone(),
+                payload.controlnet_scale,
+            );
+        }
+
         let pipeline = Pipeline::new("Text-to-Image")
             .add_stage(stage)
             .add_stage(
@@ -1383,6 +1474,11 @@ pub struct Img2ImgPayload {
     pub output: Option<String>,
     pub local: Option<bool>,
     pub local_model: Option<String>,
+    pub lora: Option<String>,
+    pub lora_scale: Option<f32>,
+    pub controlnet_image: Option<String>,
+    pub controlnet_type: Option<String>,
+    pub controlnet_scale: Option<f32>,
 }
 
 async fn generate_img2img(
@@ -1471,6 +1567,18 @@ async fn generate_img2img(
             stage = stage.with_local_model(m.clone());
         }
 
+        if let Some(ref lora) = payload.lora {
+            stage = stage.with_lora(Some(lora.clone()), payload.lora_scale);
+        }
+
+        if payload.controlnet_image.is_some() || payload.controlnet_type.is_some() {
+            stage = stage.with_controlnet(
+                payload.controlnet_image.clone(),
+                payload.controlnet_type.clone(),
+                payload.controlnet_scale,
+            );
+        }
+
         let pipeline = Pipeline::new("Image-to-Image")
             .add_stage(stage)
             .add_stage(
@@ -1545,3 +1653,541 @@ async fn generate_enhance(
         "enhanced_prompt": enhanced
     })))
 }
+
+#[derive(Deserialize)]
+pub struct TtsPayload {
+    pub text: String,
+    pub engine: Option<String>,
+    pub voice: Option<String>,
+    pub language: Option<String>,
+    pub speed: Option<f32>,
+    pub speaker_wav: Option<String>,
+}
+
+async fn generate_tts(
+    State(state): State<AppState>,
+    Json(payload): Json<TtsPayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let job_id = format!("job_{}", rand::random::<u32>());
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let text_clone = payload.text.clone();
+    record_prompt_auto(&state, &text_clone, "tts").await;
+
+    let engine = payload.engine.unwrap_or_else(|| "kokoro".to_string());
+    let voice = payload.voice.unwrap_or_default();
+    let language = payload.language.unwrap_or_else(|| "fr".to_string());
+    let speed = payload.speed.unwrap_or(1.0);
+    let speaker_wav = payload.speaker_wav;
+
+    let output_file = format!("tts_{}_{}.wav", engine, rand::random::<u16>());
+    let output_path = state.workspace_dir.join(&output_file);
+
+    let job = ServerJob {
+        id: job_id.clone(),
+        pipeline_type: "tts".to_string(),
+        status: "RUNNING".to_string(),
+        prompt: Some(text_clone.clone()),
+        source: speaker_wav.clone(),
+        result_file: Some(output_file.clone()),
+        elapsed_seconds: 0,
+        created_at: now,
+        logs: vec![JobLog {
+            level: "info".to_string(),
+            message: format!("Initialisation Text-to-Speech [{}] : '{}'", engine.to_uppercase(), text_clone),
+        }],
+        runpod_job_id: None,
+        runpod_status: None,
+        runpod_endpoint: None,
+        stage_info: None,
+    };
+
+    {
+        let mut jobs = state.jobs.lock().await;
+        jobs.insert(0, job);
+    }
+
+    let state_clone = state.clone();
+    let job_id_clone = job_id.clone();
+    let text_for_run = text_clone.clone();
+
+    tokio::spawn(async move {
+        let start = Instant::now();
+        let (api_key, base_url) = {
+            let s = state_clone.settings.lock().await;
+            (s.api_key.clone(), s.base_url.clone())
+        };
+
+        let client = create_client_with_tracking(state_clone.clone(), job_id_clone.clone(), api_key, base_url);
+        let mut ctx = PipelineContext::new(&text_for_run);
+
+        let tts_stage = TextToSpeechStage::new(&text_for_run)
+            .with_engine(&engine)
+            .with_voice(&voice)
+            .with_language(&language)
+            .with_speed(speed)
+            .with_speaker_wav(speaker_wav)
+            .with_output_path(&output_path);
+
+        let pipeline = Pipeline::new("Text-to-Speech").add_stage(tts_stage);
+
+        let res = pipeline.run(&mut ctx, &client).await;
+        let elapsed = start.elapsed().as_secs();
+
+        let mut jobs = state_clone.jobs.lock().await;
+        if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+            j.elapsed_seconds = elapsed;
+            match res {
+                Ok(_) => {
+                    j.status = "COMPLETED".to_string();
+                    j.logs.push(JobLog {
+                        level: "success".to_string(),
+                        message: format!("Audio TTS généré avec succès en {}s !", elapsed),
+                    });
+                }
+                Err(e) => {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Erreur : {:#}", e),
+                    });
+                }
+            }
+        }
+    });
+
+    Ok(Json(serde_json::json!({ "id": job_id })))
+}
+
+// ----------------------------------------------------
+// LoRA Dataset & Training Handlers
+// ----------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatasetImageItem {
+    pub name: String,
+    pub path: String,
+    pub caption: String,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatasetInfo {
+    pub name: String,
+    pub image_count: usize,
+    pub images: Vec<DatasetImageItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AutoCaptionPayload {
+    pub dataset_name: String,
+    pub trigger: String,
+    pub category: Option<String>,
+    pub overwrite: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaveCaptionPayload {
+    pub dataset_name: String,
+    pub image_name: String,
+    pub caption: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TrainLoraPayload {
+    pub dataset_name: String,
+    pub output_name: String,
+    pub instance_prompt: String,
+    pub base_model: Option<String>,
+    pub train_steps: Option<u32>,
+    pub learning_rate: Option<f32>,
+    pub lora_rank: Option<u32>,
+    pub resolution: Option<u32>,
+}
+
+async fn list_lora_datasets(State(state): State<AppState>) -> Json<Vec<DatasetInfo>> {
+    let datasets_dir = state.workspace_dir.join("datasets");
+    let mut datasets = Vec::new();
+
+    if let Ok(mut entries) = tokio::fs::read_dir(&datasets_dir).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if path.is_dir() {
+                let dataset_name = entry.file_name().to_string_lossy().to_string();
+                let mut images = Vec::new();
+
+                if let Ok(mut img_entries) = tokio::fs::read_dir(&path).await {
+                    while let Ok(Some(img_entry)) = img_entries.next_entry().await {
+                        let img_path = img_entry.path();
+                        if img_path.is_file() {
+                            let ext = img_path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                            if matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+                                let img_name = img_entry.file_name().to_string_lossy().to_string();
+                                let txt_path = img_path.with_extension("txt");
+                                let caption = match tokio::fs::read_to_string(&txt_path).await {
+                                    Ok(s) => s.trim().to_string(),
+                                    Err(_) => String::new(),
+                                };
+                                let size_bytes = img_entry.metadata().await.map(|m| m.len()).unwrap_or(0);
+                                images.push(DatasetImageItem {
+                                    name: img_name.clone(),
+                                    path: format!("/api/lora/datasets/{}/image/{}", dataset_name, img_name),
+                                    caption,
+                                    size_bytes,
+                                });
+                            }
+                        }
+                    }
+                }
+                images.sort_by(|a, b| a.name.cmp(&b.name));
+                let count = images.len();
+                datasets.push(DatasetInfo {
+                    name: dataset_name,
+                    image_count: count,
+                    images,
+                });
+            }
+        }
+    }
+    datasets.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    Json(datasets)
+}
+
+async fn serve_dataset_image(
+    State(state): State<AppState>,
+    AxumPath((dataset_name, filename)): AxumPath<(String, String)>,
+) -> Result<Response, StatusCode> {
+    let sanitized_dataset = Path::new(&dataset_name)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_str()
+        .ok_or(StatusCode::BAD_REQUEST)?;
+    let sanitized_file = Path::new(&filename)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_str()
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
+    let file_path = state.workspace_dir.join("datasets").join(sanitized_dataset).join(sanitized_file);
+    if !file_path.exists() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let mime_type = mime_guess::from_path(&file_path)
+        .first_or_octet_stream()
+        .to_string();
+
+    let bytes = tokio::fs::read(&file_path)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut response = Response::new(bytes.into());
+    if let Ok(hdr) = mime_type.parse() {
+        response.headers_mut().insert(axum::http::header::CONTENT_TYPE, hdr);
+    }
+    Ok(response)
+}
+
+async fn upload_dataset_images(
+    State(state): State<AppState>,
+    AxumPath(dataset_name): AxumPath<String>,
+    mut multipart: Multipart,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let sanitized_dataset = Path::new(&dataset_name)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_string_lossy()
+        .to_string();
+
+    let target_dir = state.workspace_dir.join("datasets").join(&sanitized_dataset);
+    tokio::fs::create_dir_all(&target_dir).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut uploaded_files = Vec::new();
+
+    while let Ok(Some(field)) = multipart.next_field().await {
+        if let Some(filename) = field.file_name() {
+            let sanitized_name = Path::new(filename)
+                .file_name()
+                .ok_or(StatusCode::BAD_REQUEST)?
+                .to_string_lossy()
+                .to_string();
+
+            let target_path = target_dir.join(&sanitized_name);
+            let data = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?;
+            tokio::fs::write(&target_path, data).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            uploaded_files.push(sanitized_name);
+        }
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "success",
+        "dataset": sanitized_dataset,
+        "uploaded_count": uploaded_files.len(),
+        "files": uploaded_files
+    })))
+}
+
+async fn autocaption_dataset(
+    State(state): State<AppState>,
+    Json(payload): Json<AutoCaptionPayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let sanitized_dataset = Path::new(&payload.dataset_name)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_string_lossy()
+        .to_string();
+
+    let dataset_dir = state.workspace_dir.join("datasets").join(&sanitized_dataset);
+    if !dataset_dir.exists() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let category = payload.category.unwrap_or_else(|| "general".to_string());
+    let overwrite = payload.overwrite.unwrap_or(false);
+
+    let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+    crate::utils::configure_python_command(&mut cmd);
+    cmd.args([
+        "src/caption_engine.py",
+        "--dataset-dir", dataset_dir.to_str().unwrap(),
+        "--trigger", &payload.trigger,
+        "--category", &category,
+        "--json",
+    ]);
+
+    if overwrite {
+        cmd.arg("--overwrite");
+    }
+
+    let output = cmd.output().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if !output.status.success() {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let json_str = String::from_utf8_lossy(&output.stdout);
+    let val: serde_json::Value = serde_json::from_str(&json_str).unwrap_or_else(|_| {
+        serde_json::json!({ "success": true, "raw": json_str.to_string() })
+    });
+
+    Ok(Json(val))
+}
+
+async fn save_dataset_caption(
+    State(state): State<AppState>,
+    Json(payload): Json<SaveCaptionPayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let sanitized_dataset = Path::new(&payload.dataset_name)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_string_lossy()
+        .to_string();
+
+    let sanitized_image = Path::new(&payload.image_name)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_string_lossy()
+        .to_string();
+
+    let dataset_dir = state.workspace_dir.join("datasets").join(&sanitized_dataset);
+    let img_path = dataset_dir.join(&sanitized_image);
+    let txt_path = img_path.with_extension("txt");
+
+    tokio::fs::write(&txt_path, payload.caption.trim().as_bytes())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(serde_json::json!({ "status": "success", "saved": true })))
+}
+
+async fn start_lora_training(
+    State(state): State<AppState>,
+    Json(payload): Json<TrainLoraPayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let job_id = format!("job_{}", rand::random::<u32>());
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let sanitized_dataset = Path::new(&payload.dataset_name)
+        .file_name()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .to_string_lossy()
+        .to_string();
+
+    let dataset_path = state.workspace_dir.join("datasets").join(&sanitized_dataset);
+    if !dataset_path.exists() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let output_name = if payload.output_name.ends_with(".safetensors") {
+        payload.output_name.clone()
+    } else {
+        format!("{}.safetensors", payload.output_name)
+    };
+
+    let base_model = payload.base_model.unwrap_or_else(|| "runwayml/stable-diffusion-v1-5".to_string());
+    let steps = payload.train_steps.unwrap_or(500);
+    let lr = payload.learning_rate.unwrap_or(1e-4);
+    let rank = payload.lora_rank.unwrap_or(8);
+    let resolution = payload.resolution.unwrap_or(512);
+    let prompt_copy = payload.instance_prompt.clone();
+
+    let job = ServerJob {
+        id: job_id.clone(),
+        pipeline_type: "lora_train".to_string(),
+        status: "RUNNING".to_string(),
+        prompt: Some(prompt_copy.clone()),
+        source: Some(sanitized_dataset.clone()),
+        result_file: Some(format!("loras/{}", output_name)),
+        elapsed_seconds: 0,
+        created_at: now,
+        logs: vec![JobLog {
+            level: "info".to_string(),
+            message: format!("Démarrage de l'entraînement LoRA '{}' sur le dataset '{}' ({} steps)", output_name, sanitized_dataset, steps),
+        }],
+        runpod_job_id: None,
+        runpod_status: None,
+        runpod_endpoint: None,
+        stage_info: Some(format!("Init LoRA: 0/{} steps", steps)),
+    };
+
+    {
+        let mut jobs = state.jobs.lock().await;
+        jobs.insert(0, job);
+    }
+
+    let state_clone = state.clone();
+    let job_id_clone = job_id.clone();
+    let out_name_clone = output_name.clone();
+
+    tokio::spawn(async move {
+        let start = Instant::now();
+
+        let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+        crate::utils::configure_python_command(&mut cmd);
+        cmd.args([
+            "src/lora_train_engine.py",
+            "--dataset-dir", dataset_path.to_str().unwrap(),
+            "--instance-prompt", &prompt_copy,
+            "--output-name", &out_name_clone,
+            "--output-dir", "loras",
+            "--base-model", &base_model,
+            "--resolution", &resolution.to_string(),
+            "--train-steps", &steps.to_string(),
+            "--learning-rate", &lr.to_string(),
+            "--lora-rank", &rank.to_string(),
+            "--gradient-accumulation-steps", "4",
+            "--mixed-precision", "fp16",
+            "--device", "cuda",
+        ]);
+
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let mut jobs = state_clone.jobs.lock().await;
+                if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Impossible de démarrer le script lora_train_engine.py : {}", e),
+                    });
+                }
+                return;
+            }
+        };
+
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+
+        let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+        let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+        let mut stdout_done = false;
+        let mut stderr_done = false;
+
+        while !stdout_done || !stderr_done {
+            tokio::select! {
+                line = stdout_reader.next_line(), if !stdout_done => {
+                    match line {
+                        Ok(Some(l)) => {
+                            let line_str: String = l;
+                            let mut jobs = state_clone.jobs.lock().await;
+                            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+                                j.elapsed_seconds = start.elapsed().as_secs();
+                                if line_str.starts_with("[PROGRESS]") {
+                                    j.stage_info = Some(line_str.clone());
+                                    j.logs.push(JobLog {
+                                        level: "progress".to_string(),
+                                        message: line_str,
+                                    });
+                                } else {
+                                    j.logs.push(JobLog {
+                                        level: "info".to_string(),
+                                        message: line_str,
+                                    });
+                                }
+                            }
+                        }
+                        _ => stdout_done = true,
+                    }
+                }
+                line = stderr_reader.next_line(), if !stderr_done => {
+                    match line {
+                        Ok(Some(l)) => {
+                            let line_str: String = l;
+                            let mut jobs = state_clone.jobs.lock().await;
+                            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+                                j.logs.push(JobLog {
+                                    level: "warn".to_string(),
+                                    message: line_str,
+                                });
+                            }
+                        }
+                        _ => stderr_done = true,
+                    }
+                }
+            }
+        }
+
+        let status = child.wait().await;
+        let elapsed = start.elapsed().as_secs();
+
+        let mut jobs = state_clone.jobs.lock().await;
+        if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+            j.elapsed_seconds = elapsed;
+            match status {
+                Ok(s) if s.success() => {
+                    j.status = "COMPLETED".to_string();
+                    j.logs.push(JobLog {
+                        level: "success".to_string(),
+                        message: format!("🎉 Entraînement LoRA terminé avec succès en {}s ! Fichier enregistré dans loras/{}", elapsed, out_name_clone),
+                    });
+                }
+                Ok(s) => {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Le processus d'entraînement s'est arrêté avec le code {:?}", s.code()),
+                    });
+                }
+                Err(e) => {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Erreur d'attente du processus : {}", e),
+                    });
+                }
+            }
+        }
+    });
+
+    Ok(Json(serde_json::json!({ "id": job_id })))
+}
+

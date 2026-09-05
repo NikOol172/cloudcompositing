@@ -2,12 +2,13 @@
 # Install with: pip install -r requirements-local-gpu.txt
 # For CUDA PyTorch: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
-# PyTorch & Diffusers for Local Text-to-Image
+# PyTorch & Diffusers for Local Text-to-Image & LoRA Training
 torch>=2.1.0
 torchvision>=0.16.0
 diffusers>=0.28.0
 transformers>=4.40.0
 accelerate>=0.29.0
+peft>=0.10.0
 safetensors>=0.4.0
 
 # ONNX Runtime & InsightFace for Local FaceSwap
@@ -18,3 +19,10 @@ insightface>=0.7.3
 opencv-python>=4.8.0
 numpy>=1.24.0
 pillow>=10.0.0
+
+# Local Text-to-Speech (TTS) Engines: Kokoro-82M & Coqui XTTS-v2
+soundfile>=0.12.1
+scipy>=1.11.0
+kokoro>=0.8.4
+torchaudio>=2.2.0
+coqui-tts>=0.27.5

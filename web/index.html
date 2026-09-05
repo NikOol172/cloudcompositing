@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <div class="app-layout">
@@ -62,12 +62,29 @@
             <span class="status-dot online" id="sidebar-status-dot"></span>
             <span class="account-email-label" id="sidebar-account-email" title="Compte RunPod">Chargement...</span>
           </div>
+          <button type="button" class="btn-sidebar-wifi" onclick="openWifiModal()" title="Ouvrir sur mobile via Wi-Fi">
+            <span>📱 Accès Mobile Wi-Fi</span>
+          </button>
         </div>
       </div>
     </aside>
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <!-- Top Bar for Mobile Screens -->
+      <header class="mobile-top-bar">
+        <div class="mobile-brand">
+          <div class="logo-icon-sm">⚡</div>
+          <span class="mobile-brand-title">RunPod Studio</span>
+        </div>
+        <div class="mobile-header-actions">
+          <button type="button" class="btn-wifi-badge" onclick="openWifiModal()" title="Accès Wi-Fi Mobile">
+            <span>📶 Wi-Fi</span>
+          </button>
+          <span class="mobile-balance-pill" id="mobile-balance-pill" onclick="switchTab('settings')">-- $</span>
+        </div>
+      </header>
+
       <!-- TAB 1: STUDIO GENERATION -->
       <section id="tab-studio" class="tab-pane active">
         <div class="section-header">
@@ -82,6 +99,8 @@
             <button class="pill-btn" data-pipeline="faceswap">🎭 Face Swap</button>
             <button class="pill-btn" data-pipeline="vid2vid">🎞️ Video-to-Video</button>
             <button class="pill-btn" data-pipeline="txt2img">✨ Text-to-Image</button>
+            <button class="pill-btn" data-pipeline="tts">🎙️ Text-to-Speech</button>
+            <button class="pill-btn" data-pipeline="lora-train">🎓 Entraînement LoRA</button>
             <button class="pill-btn" data-pipeline="enhance">🧠 Prompt Enhancer</button>
           </div>
         </div>
@@ -312,6 +331,71 @@
                 </div>
               </div>
 
+              <!-- LoRA Section (Image-to-Image) -->
+              <div class="collapsible-card" id="i2i-lora-card">
+                <div class="collapsible-header" onclick="toggleCollapsible('i2i-lora-body', 'i2i-lora-icon')">
+                  <span>🎨 Stylisation LoRA <span class="lora-badge">Optionnel</span></span>
+                  <span class="collapsible-icon collapsed" id="i2i-lora-icon">▾</span>
+                </div>
+                <div class="collapsible-body collapsed" id="i2i-lora-body">
+                  <div class="form-row">
+                    <div class="form-group col">
+                      <label for="i2i-lora-select">Modèle LoRA (Dossier <code>loras/</code>)</label>
+                      <select id="i2i-lora-select" class="lora-select-dropdown">
+                        <option value="" selected>Aucun (Modèle pur)</option>
+                      </select>
+                    </div>
+                    <div class="form-group col">
+                      <label for="i2i-lora-scale">Poids du LoRA : <span id="i2i-lora-scale-val">0.80x</span></label>
+                      <input type="range" id="i2i-lora-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('i2i-lora-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ControlNet Section (Image-to-Image) -->
+              <div class="collapsible-card" id="i2i-controlnet-card">
+                <div class="collapsible-header" onclick="toggleCollapsible('i2i-controlnet-body', 'i2i-controlnet-icon')">
+                  <span>🎯 Guidage Spatial ControlNet <span class="controlnet-badge">SDXL</span></span>
+                  <span class="collapsible-icon collapsed" id="i2i-controlnet-icon">▾</span>
+                </div>
+                <div class="collapsible-body collapsed" id="i2i-controlnet-body">
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="i2i-controlnet-enable" onchange="toggleControlNetVisibility('i2i')">
+                      <span>Activer le guidage géométrique ControlNet</span>
+                    </label>
+                  </div>
+                  <div id="i2i-controlnet-fields" style="display: none;">
+                    <div class="form-row">
+                      <div class="form-group col">
+                        <label for="i2i-controlnet-type">Type de Contrôle</label>
+                        <select id="i2i-controlnet-type">
+                          <option value="canny" selected>📐 Contours Précis (Canny Edges)</option>
+                          <option value="depth">🌐 Carte de Profondeur (Depth Map)</option>
+                        </select>
+                      </div>
+                      <div class="form-group col">
+                        <label for="i2i-controlnet-scale">Force du Guidage : <span id="i2i-controlnet-scale-val">0.80x</span></label>
+                        <input type="range" id="i2i-controlnet-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('i2i-controlnet-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Image de guidage (Laissez vide pour utiliser l'image source)</label>
+                      <div class="media-selector-box square" id="i2i-controlnet-preview" onclick="if(!document.getElementById('i2i-controlnet-path').value) openMediaPicker('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">
+                        <div class="empty-state-selector"><span>🖼️ Image guide personnalisée (ou laisser vide)</span></div>
+                      </div>
+                      <input type="hidden" id="i2i-controlnet-path">
+                      <div class="selector-actions">
+                        <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">Galerie</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">Upload</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="clearControlNetRef('i2i')">Effacer</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="form-group">
                 <label for="i2i-output">Nom du fichier image résultat</label>
                 <input type="text" id="i2i-output" value="pickleball_player.png">
@@ -478,6 +562,71 @@
                 </div>
               </div>
 
+              <!-- LoRA Section (Text-to-Image) -->
+              <div class="collapsible-card" id="t2i-lora-card">
+                <div class="collapsible-header" onclick="toggleCollapsible('t2i-lora-body', 't2i-lora-icon')">
+                  <span>🎨 Stylisation LoRA <span class="lora-badge">Optionnel</span></span>
+                  <span class="collapsible-icon collapsed" id="t2i-lora-icon">▾</span>
+                </div>
+                <div class="collapsible-body collapsed" id="t2i-lora-body">
+                  <div class="form-row">
+                    <div class="form-group col">
+                      <label for="t2i-lora-select">Modèle LoRA (Dossier <code>loras/</code>)</label>
+                      <select id="t2i-lora-select" class="lora-select-dropdown">
+                        <option value="" selected>Aucun (Modèle pur)</option>
+                      </select>
+                    </div>
+                    <div class="form-group col">
+                      <label for="t2i-lora-scale">Poids du LoRA : <span id="t2i-lora-scale-val">0.80x</span></label>
+                      <input type="range" id="t2i-lora-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('t2i-lora-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ControlNet Section (Text-to-Image) -->
+              <div class="collapsible-card" id="t2i-controlnet-card">
+                <div class="collapsible-header" onclick="toggleCollapsible('t2i-controlnet-body', 't2i-controlnet-icon')">
+                  <span>🎯 Guidage Spatial ControlNet <span class="controlnet-badge">SDXL</span></span>
+                  <span class="collapsible-icon collapsed" id="t2i-controlnet-icon">▾</span>
+                </div>
+                <div class="collapsible-body collapsed" id="t2i-controlnet-body">
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="t2i-controlnet-enable" onchange="toggleControlNetVisibility('t2i')">
+                      <span>Activer le guidage géométrique ControlNet</span>
+                    </label>
+                  </div>
+                  <div id="t2i-controlnet-fields" style="display: none;">
+                    <div class="form-row">
+                      <div class="form-group col">
+                        <label for="t2i-controlnet-type">Type de Contrôle</label>
+                        <select id="t2i-controlnet-type">
+                          <option value="canny" selected>📐 Contours Précis (Canny Edges)</option>
+                          <option value="depth">🌐 Carte de Profondeur (Depth Map)</option>
+                        </select>
+                      </div>
+                      <div class="form-group col">
+                        <label for="t2i-controlnet-scale">Force du Guidage : <span id="t2i-controlnet-scale-val">0.80x</span></label>
+                        <input type="range" id="t2i-controlnet-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('t2i-controlnet-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Image Source de Guidage (Contours / Profondeur)</label>
+                      <div class="media-selector-box square" id="t2i-controlnet-preview" onclick="if(!document.getElementById('t2i-controlnet-path').value) openMediaPicker('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">
+                        <div class="empty-state-selector"><span>🖼️ Choisir l'image guide</span></div>
+                      </div>
+                      <input type="hidden" id="t2i-controlnet-path">
+                      <div class="selector-actions">
+                        <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">Galerie</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">Upload</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="clearControlNetRef('t2i')">Effacer</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="form-group">
                 <label for="t2i-output">Nom du fichier image</label>
                 <input type="text" id="t2i-output" value="flux_image.png">
@@ -504,6 +653,206 @@
                 <label>Résultat enrichi :</label>
                 <div class="enhanced-result-box" id="enh-result">Le prompt optimisé apparaîtra ici...</div>
               </div>
+            </form>
+
+            <!-- Form for tts -->
+            <form id="form-tts" class="pipeline-form" onsubmit="handleTtsSubmit(event); return false;">
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="tts-text">Texte à synthétiser / Réplique vocale</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('tts-text')">📜 Historique</button>
+                </div>
+                <div class="textarea-wrapper">
+                  <textarea id="tts-text" rows="4" placeholder="Ex: Bonjour et bienvenue dans notre studio de création ! La synthèse vocale en local sur RTX 2080 est d'une fluidité remarquable."></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Enrichir ce texte" onclick="enhanceCurrentPrompt('tts-text')">🧠 Optimiser</button>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="tts-engine">Moteur de Synthèse</label>
+                  <select id="tts-engine" onchange="handleTtsEngineChange()">
+                    <option value="kokoro" selected>⚡ Kokoro-82M (Ultra-rapide & Naturel)</option>
+                    <option value="xtts">🎭 Coqui XTTS-v2 (Clonage vocal haute fidélité)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="tts-language">Langue</label>
+                  <select id="tts-language" onchange="handleTtsLanguageChange()">
+                    <option value="fr" selected>🇫🇷 Français</option>
+                    <option value="en">🇬🇧 / 🇺🇸 Anglais</option>
+                    <option value="es">🇪🇸 Espagnol</option>
+                    <option value="de">🇩🇪 Allemand</option>
+                    <option value="it">🇮🇹 Italien</option>
+                    <option value="pt">🇵🇹 Portugais</option>
+                    <option value="ja">🇯🇵 Japonais</option>
+                    <option value="zh">🇨🇳 Chinois</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row" id="tts-voice-row">
+                <div class="form-group col">
+                  <label for="tts-voice">Voix Prédéfinie</label>
+                  <select id="tts-voice">
+                    <!-- Options mises à jour dynamiquement selon la langue -->
+                    <option value="ff_siwis" selected>ff_siwis (Française - Naturelle)</option>
+                    <option value="af_bella">af_bella (Anglaise US - Chaleureuse)</option>
+                    <option value="af_sarah">af_sarah (Anglaise US - Calme)</option>
+                    <option value="am_adam">am_adam (Anglaise US - Homme grave)</option>
+                    <option value="am_michael">am_michael (Anglaise US - Homme dynamique)</option>
+                    <option value="bf_emma">bf_emma (Anglaise UK - Distinguée)</option>
+                    <option value="bm_george">bm_george (Anglaise UK - Homme)</option>
+                  </select>
+                </div>
+                <div class="form-group col">
+                  <label for="tts-speed">Vitesse de diction (<span id="tts-speed-val">1.00x</span>)</label>
+                  <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('tts-speed-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
+                </div>
+              </div>
+
+              <!-- XTTS Voice Cloning Reference Section -->
+              <div class="form-group" id="tts-xtts-ref-group" style="display: none;">
+                <label for="tts-speaker-wav">Fichier audio de référence pour clonage vocal (3 à 10s)</label>
+                <div class="input-with-action">
+                  <input type="text" id="tts-speaker-wav" placeholder="Ex: ma_voix.wav ou choisissez un audio de la galerie">
+                  <button type="button" class="btn-secondary" onclick="openMediaPicker('tts-speaker-wav', '', 'audio')">📁 Galerie</button>
+                </div>
+                <small class="form-help">XTTS-v2 imitera le timbre, la voix et l'intonation de cet extrait audio.</small>
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow" onclick="handleTtsSubmit(event)">
+                <span id="tts-submit-text">🎙️ Générer la Voix</span>
+              </button>
+            </form>
+
+            <!-- Form for LoRA Training Studio -->
+            <form id="form-lora-train" class="pipeline-form" onsubmit="handleLoraTrainSubmit(event); return false;">
+              <div class="lora-wizard-step">
+                <div class="step-badge-row">
+                  <span class="step-number">1</span>
+                  <h4>📁 Dataset & Concept à Apprendre</h4>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group col">
+                    <label for="lora-dataset-select">Dataset d'images</label>
+                    <select id="lora-dataset-select" onchange="handleLoraDatasetChange()">
+                      <option value="__new__">➕ Nouveau Dataset...</option>
+                    </select>
+                  </div>
+                  <div class="form-group col" id="lora-new-dataset-group">
+                    <label for="lora-dataset-name">Nom du Dataset</label>
+                    <input type="text" id="lora-dataset-name" placeholder="Ex: mon-visage, parfum-luxe, style-cyberpunk">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group col">
+                    <label for="lora-category">Catégorie du sujet</label>
+                    <select id="lora-category">
+                      <option value="person" selected>👤 Personne / Visage</option>
+                      <option value="product">📦 Objet / Produit commercial</option>
+                      <option value="style">🎨 Style artistique</option>
+                      <option value="general">✨ Général</option>
+                    </select>
+                  </div>
+                  <div class="form-group col">
+                    <label for="lora-trigger">Mot déclencheur (Trigger Token)</label>
+                    <input type="text" id="lora-trigger" value="sks person" placeholder="Ex: sks person, ohwx watch">
+                    <small class="form-help">Le mot unique que vous utiliserez dans vos futurs prompts pour invoquer ce concept.</small>
+                  </div>
+                </div>
+
+                <!-- Dropzone for dataset images -->
+                <div class="dropzone lora-dropzone" id="lora-dropzone" onclick="document.getElementById('lora-files-input').click()">
+                  <div class="dropzone-content">
+                    <span class="drop-icon">📸</span>
+                    <p>Glissez-déposez 5 à 30 photos ici (ou cliquez pour parcourir)</p>
+                    <small class="text-dim">Formats acceptés : PNG, JPG, WEBP. Recommandé : photos nettes sous plusieurs angles.</small>
+                  </div>
+                </div>
+                <input type="file" id="lora-files-input" multiple accept="image/*" style="display:none;" onchange="handleLoraFilesUpload(event)">
+              </div>
+
+              <!-- Step 2: Auto-Captioning & Review -->
+              <div class="lora-wizard-step" id="lora-captions-step">
+                <div class="step-badge-row">
+                  <span class="step-number">2</span>
+                  <h4>✨ Auto-Légendage & Descriptions des Photos</h4>
+                  <button type="button" class="btn-secondary btn-sm" id="btn-autocaption" onclick="triggerAutoCaption()">
+                    <span id="btn-autocaption-text">🪄 Auto-Légender avec l'IA</span>
+                  </button>
+                </div>
+                <p class="section-desc">Chaque photo est associée à une légende intégrant votre mot déclencheur. Vous pouvez modifier le texte de chaque image en direct.</p>
+                
+                <div class="dataset-images-grid" id="dataset-images-container">
+                  <div class="empty-dataset-hint">
+                    <span>🖼️</span>
+                    <p>Aucune photo dans ce dataset pour le moment. Uploadez des photos ci-dessus pour commencer.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Step 3: Hyperparamètres & Optimisation VRAM -->
+              <div class="lora-wizard-step">
+                <div class="step-badge-row">
+                  <span class="step-number">3</span>
+                  <h4>⚙️ Paramètres d'Entraînement & Optimisations GPU</h4>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group col">
+                    <label for="lora-output-name">Nom du fichier LoRA (.safetensors)</label>
+                    <input type="text" id="lora-output-name" placeholder="Ex: mon_modele.safetensors">
+                  </div>
+                  <div class="form-group col">
+                    <label for="lora-base-model">Modèle de Base</label>
+                    <select id="lora-base-model">
+                      <option value="runwayml/stable-diffusion-v1-5" selected>⚡ Stable Diffusion 1.5 (Idéal 8 Go VRAM, rapide & léger)</option>
+                      <option value="stabilityai/stable-diffusion-xl-base-1.0">🌟 SDXL Base 1.0 (Haute Définition 1024x1024)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group col">
+                    <label for="lora-train-steps">Étapes d'entraînement (Steps) : <strong id="lora-steps-val" class="accent-val">500</strong></label>
+                    <input type="range" id="lora-train-steps" min="100" max="2500" step="50" value="500" oninput="document.getElementById('lora-steps-val').textContent = this.value">
+                    <small class="form-help">500 steps ≈ 10-15 min sur RTX 2080 pour 10 photos.</small>
+                  </div>
+                  <div class="form-group col">
+                    <label for="lora-rank">Rang LoRA (Dimension / Capacité)</label>
+                    <select id="lora-rank">
+                      <option value="4">Rank 4 (Ultra-léger, ~9 Mo)</option>
+                      <option value="8" selected>Rank 8 (Standard Recommandé, ~18 Mo)</option>
+                      <option value="16">Rank 16 (Haute fidélité détaillée, ~36 Mo)</option>
+                      <option value="32">Rank 32 (Fidélité maximale, ~72 Mo)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="hardware-badge-box">
+                  <div class="hw-badge-item">
+                    <span class="hw-icon">⚡</span>
+                    <div>
+                      <strong>Accélération RTX 2080</strong>
+                      <p>Latents VAE pré-mis en cache en mémoire vive pour soulager le GPU.</p>
+                    </div>
+                  </div>
+                  <div class="hw-badge-item">
+                    <span class="hw-icon">🛡️</span>
+                    <div>
+                      <strong>Sécurité Mémoire VRAM 8 Go</strong>
+                      <p>Précision FP16 + Gradient Accumulation x4 pour prévenir tout OOM.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary btn-glow" id="btn-submit-lora-train" onclick="handleLoraTrainSubmit(event)">
+                <span id="lora-train-submit-text">🚀 Lancer l'Entraînement LoRA</span>
+              </button>
             </form>
           </div>
 
@@ -541,11 +890,12 @@
               <button class="filter-btn active" data-filter="all">Tous</button>
               <button class="filter-btn" data-filter="videos">🎬 Vidéos</button>
               <button class="filter-btn" data-filter="images">🖼️ Images</button>
+              <button class="filter-btn" data-filter="audio">🎙️ Audio</button>
             </div>
             <button class="btn-primary" onclick="document.getElementById('file-upload-input').click()">
               <span>⬆️ Importer un Média</span>
             </button>
-            <input type="file" id="file-upload-input" style="display:none;" multiple accept="image/*,video/*" onchange="handleFileUpload(event)">
+            <input type="file" id="file-upload-input" style="display:none;" multiple accept="image/*,video/*,audio/*" onchange="handleFileUpload(event)">
           </div>
         </div>
 
@@ -589,6 +939,7 @@
             <button class="pill-btn" data-prompt-filter="img2vid" onclick="setPromptFilter('img2vid')">🖼️ Image-to-Video</button>
             <button class="pill-btn" data-prompt-filter="vid2vid" onclick="setPromptFilter('vid2vid')">🎞️ Vid2Vid</button>
             <button class="pill-btn" data-prompt-filter="txt2img" onclick="setPromptFilter('txt2img')">✨ Flux</button>
+            <button class="pill-btn" data-prompt-filter="tts" onclick="setPromptFilter('tts')">🎙️ Text-to-Speech</button>
             <button class="pill-btn" data-prompt-filter="enhanced" onclick="setPromptFilter('enhanced')">🧠 Optimisés</button>
           </div>
         </div>
@@ -796,6 +1147,7 @@
               <option value="img2img">🎨 Image-to-Image</option>
               <option value="vid2vid">🎞️ Video-to-Video</option>
               <option value="txt2img">✨ Text-to-Image (Flux)</option>
+              <option value="tts">🎙️ Text-to-Speech</option>
               <option value="general">Général / Autre</option>
             </select>
           </div>
@@ -939,9 +1291,40 @@
     </div>
   </div>
 
+  <!-- Modal Wi-Fi / Mobile Connection -->
+  <div class="modal" id="wifi-modal">
+    <div class="modal-content" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>📱 Accès Mobile Wi-Fi</h3>
+        <button class="modal-close" onclick="closeWifiModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="flex-direction: column; text-align: center; gap: 16px; padding: 24px 20px;">
+        <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+          Connectez votre téléphone Android au même réseau <strong>Wi-Fi</strong> pour piloter le studio directement depuis votre mobile :
+        </p>
+
+        <div id="wifi-qr-container" style="display: flex; justify-content: center; align-items: center; background: #fff; padding: 14px; border-radius: 12px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+          <img id="wifi-qr-img" src="" alt="QR Code Wi-Fi" style="width: 190px; height: 190px; display: block; border: none; border-radius: 4px;">
+        </div>
+
+        <div style="background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%;">
+          <span style="font-size: 0.76rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">Adresse URL Mobile</span>
+          <a id="wifi-url-link" href="#" target="_blank" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-cyan); text-decoration: none; font-family: var(--font-mono); word-break: break-all;">Chargement...</a>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">
+          💡 <strong>Astuce :</strong> Scannez le QR Code avec l'appareil photo de votre smartphone ou ouvrez Chrome sur Android et tapez l'adresse ci-dessus !
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary" onclick="closeWifiModal()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=32"></script>
 </body>
 </html>

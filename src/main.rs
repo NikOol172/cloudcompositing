@@ -11,7 +11,7 @@ use client::RunpodClient;
 use console::style;
 use pipeline::stages::{
     DownloadStage, FaceSwapStage, ImageToImageStage, ImageToVideoStage, InteractiveReviewStage, PromptEnhanceStage,
-    TextToImageStage, VideoToVideoStage,
+    TextToImageStage, TextToSpeechStage, VideoToVideoStage,
 };
 use pipeline::{Pipeline, PipelineContext};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -40,6 +40,54 @@ async fn main() -> anyhow::Result<()> {
         return server::start_server(args.port, args.open).await;
     }
 
+    // Synthèse vocale locale (ne requiert pas de clé RunPod)
+    if let Commands::Tts(args) = cli.command {
+        println!(
+            "{}",
+            style(format!("=== Synthèse Vocale (Text-to-Speech) [{}] ===", args.engine.to_uppercase()))
+                .bold()
+                .magenta()
+        );
+
+        let dummy_client = RunpodClient::with_base_url("local", cli.base_url);
+        let mut ctx = PipelineContext::new(&args.text);
+
+        let stage = TextToSpeechStage::new(args.text)
+            .with_engine(args.engine)
+            .with_voice(args.voice)
+            .with_language(args.language)
+            .with_speed(args.speed)
+            .with_speaker_wav(args.speaker_wav)
+            .with_output_path(args.output);
+
+        let pipeline = Pipeline::new("Text-to-Speech").add_stage(stage);
+        return pipeline.run(&mut ctx, &dummy_client).await;
+    }
+
+    // Entraînement LoRA local (ne requiert pas de clé RunPod)
+    if let Commands::TrainLora(args) = cli.command {
+        println!(
+            "{}",
+            style(format!("=== Entraînement LoRA Fine-Tuning [{}] ===", args.output))
+                .bold()
+                .magenta()
+        );
+
+        let dummy_client = RunpodClient::with_base_url("local", cli.base_url);
+        let mut ctx = PipelineContext::new(&args.prompt);
+
+        let stage = pipeline::stages::LoraTrainingStage::new(args.dataset, args.output)
+            .with_instance_prompt(args.prompt)
+            .with_base_model(args.base_model)
+            .with_train_steps(args.steps)
+            .with_learning_rate(args.lr)
+            .with_lora_rank(args.rank)
+            .with_resolution(args.resolution);
+
+        let pipeline = Pipeline::new("LoRA Training").add_stage(stage);
+        return pipeline.run(&mut ctx, &dummy_client).await;
+    }
+
     // Récupération de la clé API
     let api_key = match cli.api_key.or_else(|| std::env::var("RUNPOD_API_KEY").ok()) {
         Some(k) if !k.trim().is_empty() => k.trim().to_string(),
@@ -61,6 +109,8 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Serve(_) => unreachable!(),
+        Commands::Tts(_) => unreachable!(),
+        Commands::TrainLora(_) => unreachable!(),
         Commands::Img2Vid(args) => {
             let video_model = std::str::FromStr::from_str(&args.model).unwrap_or(models::VideoModel::Wan2_5);
             println!(

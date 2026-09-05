@@ -81,7 +81,8 @@ impl Stage for FaceSwapStage {
 
         println!("  Lancement du moteur de remplacement de visage InsightFace...");
 
-        let mut cmd = tokio::process::Command::new("python3");
+        let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+        crate::utils::configure_python_command(&mut cmd);
         cmd.args([
             "src/faceswap_engine.py",
             "--source", &self.source_face_input,

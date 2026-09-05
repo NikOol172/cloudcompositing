@@ -5,6 +5,50 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
+/// Retourne le nom ou chemin de l'exécutable Python adapté à la plateforme (Windows ou Unix).
+pub fn get_python_binary() -> String {
+    if let Ok(py) = std::env::var("PYTHON") {
+        if !py.trim().is_empty() {
+            return py;
+        }
+    }
+    // Détection automatique de l'environnement virtuel .venv
+    let venv_py = if cfg!(windows) {
+        Path::new(".venv").join("Scripts").join("python.exe")
+    } else {
+        Path::new(".venv").join("bin").join("python")
+    };
+    if venv_py.exists() {
+        return venv_py.to_string_lossy().to_string();
+    }
+    if cfg!(windows) {
+        "python".to_string()
+    } else {
+        "python3".to_string()
+    }
+}
+
+/// Configure les variables d'environnement pour l'exécution Python (caches sur disque du projet pour éviter de saturer C:).
+pub fn configure_python_command(cmd: &mut tokio::process::Command) {
+    let workspace = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let hf_cache = workspace.join(".hf_cache");
+    let hf_hub = hf_cache.join("hub");
+    let torch_cache = workspace.join(".torch_cache");
+
+    let _ = std::fs::create_dir_all(&hf_hub);
+    let _ = std::fs::create_dir_all(&torch_cache);
+
+    cmd.env("HF_HOME", &hf_cache);
+    cmd.env("HUGGINGFACE_HUB_CACHE", &hf_hub);
+    cmd.env("TORCH_HOME", &torch_cache);
+    cmd.env("PYTHONIOENCODING", "utf-8");
+    cmd.env("PYTHONUNBUFFERED", "1");
+    cmd.env("CUBLAS_WORKSPACE_CONFIG", ":4096:8");
+    cmd.env("COQUI_TOS_AGREED", "1");
+    cmd.env("SAFETENSORS_BACKEND", "pread");
+    cmd.env("HF_HUB_DISABLE_SYMLINKS_WARNING", "1");
+}
+
 /// Convertit un fichier image local en Data URI standard (`data:image/png;base64,...`).
 pub fn image_to_data_uri(path: &Path) -> Result<String> {
     if !path.exists() {
@@ -306,6 +350,13 @@ pub fn open_file_preview(path: &Path) -> Result<()> {
         })?;
     }
     Ok(())
+}
+
+/// Récupère l'adresse IP locale (LAN / Wi-Fi) de la machine pour l'accès mobile.
+pub fn get_local_lan_ip() -> Option<String> {
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    socket.local_addr().ok().map(|addr| addr.ip().to_string())
 }
 
 #[cfg(test)]

@@ -16,6 +16,9 @@ function initApp() {
   initDropzone();
   initForms();
   loadMedia();
+  loadLoras();
+  loadLoraDatasets();
+  initLoraTraining();
   loadJobs();
   loadPrompts();
   loadSettings();
@@ -114,7 +117,8 @@ function renderMediaGrid() {
 
   const filtered = allMedia.filter(m => {
     if (activeFilter === 'videos') return m.is_video;
-    if (activeFilter === 'images') return !m.is_video;
+    if (activeFilter === 'audio') return m.is_audio;
+    if (activeFilter === 'images') return !m.is_video && !m.is_audio;
     return true;
   });
 
@@ -130,14 +134,27 @@ function renderMediaGrid() {
 
   filtered.forEach(item => {
     const card = document.createElement('div');
-    card.className = 'media-card';
+    card.className = 'media-card' + (item.is_audio ? ' media-card-audio' : '');
 
-    const thumbHtml = item.is_video
-      ? `<video src="/api/media/${encodeURIComponent(item.name)}" muted preload="metadata"></video>
+    let thumbHtml;
+    let typeLabel = 'Image';
+    if (item.is_video) {
+      thumbHtml = `<video src="/api/media/${encodeURIComponent(item.name)}" muted preload="metadata"></video>
          <span class="media-badge">🎬 VIDÉO</span>
-         <div class="play-overlay-icon">▶</div>`
-      : `<img src="/api/media/${encodeURIComponent(item.name)}" loading="lazy" alt="${item.name}">
+         <div class="play-overlay-icon">▶</div>`;
+      typeLabel = 'MP4';
+    } else if (item.is_audio) {
+      thumbHtml = `<div class="audio-card-visual">
+         <div class="audio-wave-bars"><span></span><span></span><span></span><span></span><span></span></div>
+         <span class="audio-center-icon">🎙️</span>
+       </div>
+       <span class="media-badge badge-audio">🎙️ AUDIO</span>`;
+      typeLabel = 'Audio';
+    } else {
+      thumbHtml = `<img src="/api/media/${encodeURIComponent(item.name)}" loading="lazy" alt="${item.name}">
          <span class="media-badge">🖼️ IMAGE</span>`;
+      typeLabel = 'Image';
+    }
 
     card.innerHTML = `
       <div class="media-thumbnail-wrapper" onclick="openMediaModal('${item.name}')">
@@ -147,10 +164,10 @@ function renderMediaGrid() {
         <div class="media-name" title="${item.name}">${item.name}</div>
         <div class="media-meta">
           <span>${formatBytes(item.size_bytes)}</span>
-          <span>${item.is_video ? 'MP4' : 'Image'}</span>
+          <span>${typeLabel}</span>
         </div>
         <div class="media-actions">
-          <button class="btn-secondary btn-sm" onclick="reuseMedia('${item.name}', ${item.is_video})">⚡ Réutiliser</button>
+          <button class="btn-secondary btn-sm" onclick="reuseMedia('${item.name}', ${item.is_video}, ${item.is_audio || false})">⚡ Réutiliser</button>
           <button class="btn-secondary btn-sm" onclick="downloadMedia('${item.name}')">⬇️</button>
           <button class="btn-danger btn-sm" onclick="deleteMedia('${item.name}')">🗑️</button>
         </div>
@@ -373,6 +390,7 @@ async function openMediaPicker(targetInputId, previewContainerId, allowedType = 
   if (titleEl) {
     if (allowedType === 'image') titleEl.innerText = '🖼️ Choisir une Image Source';
     else if (allowedType === 'video') titleEl.innerText = '🎬 Choisir une Vidéo Source';
+    else if (allowedType === 'audio') titleEl.innerText = '🎙️ Choisir un Extrait Audio (Référence XTTS)';
     else titleEl.innerText = '📁 Choisir un Média Source';
   }
 
@@ -398,7 +416,8 @@ function renderPickerGrid(searchQuery = '') {
 
   let filtered = allMedia.filter(m => {
     if (currentPickerAllowedType === 'video') return m.is_video;
-    if (currentPickerAllowedType === 'image') return !m.is_video;
+    if (currentPickerAllowedType === 'image') return !m.is_video && !m.is_audio;
+    if (currentPickerAllowedType === 'audio') return m.is_audio;
     return true;
   });
 
@@ -422,9 +441,14 @@ function renderPickerGrid(searchQuery = '') {
     card.style.cursor = 'pointer';
     card.onclick = () => currentPickerCallback(item.name, item.is_video);
 
-    const thumbHtml = item.is_video
-      ? `<video src="/api/media/${encodeURIComponent(item.name)}" muted playsinline onerror="this.outerHTML='<div class=\\'video-codec-box\\'>🎬</div>'"></video><span class="media-badge">VIDÉO</span>`
-      : `<img src="/api/media/${encodeURIComponent(item.name)}" alt="${item.name}"><span class="media-badge">IMAGE</span>`;
+    let thumbHtml;
+    if (item.is_video) {
+      thumbHtml = `<video src="/api/media/${encodeURIComponent(item.name)}" muted playsinline onerror="this.outerHTML='<div class=\\'video-codec-box\\'>🎬</div>'"></video><span class="media-badge">VIDÉO</span>`;
+    } else if (item.is_audio) {
+      thumbHtml = `<div class="audio-card-visual" style="height: 100px;"><span style="font-size: 2.5rem;">🎙️</span></div><span class="media-badge badge-audio">AUDIO</span>`;
+    } else {
+      thumbHtml = `<img src="/api/media/${encodeURIComponent(item.name)}" alt="${item.name}"><span class="media-badge">IMAGE</span>`;
+    }
 
     card.innerHTML = `
       <div class="media-thumbnail-wrapper">${thumbHtml}</div>
@@ -490,6 +514,13 @@ function openMediaModal(filename) {
   const body = document.getElementById('modal-body');
   if (item.is_video) {
     body.innerHTML = `<video src="/api/media/${encodeURIComponent(item.name)}" controls autoplay style="max-height: 65vh; width: 100%;"></video>`;
+  } else if (item.is_audio) {
+    body.innerHTML = `
+      <div class="audio-modal-player">
+        <div class="audio-modal-icon">🎙️</div>
+        <h3 class="audio-modal-name">${escapeHtml(item.name)}</h3>
+        <audio src="/api/media/${encodeURIComponent(item.name)}" controls autoplay style="width: 100%; max-width: 480px; margin-top: 15px;"></audio>
+      </div>`;
   } else {
     body.innerHTML = `<img src="/api/media/${encodeURIComponent(item.name)}" alt="${item.name}" style="max-height: 65vh; object-fit: contain;">`;
   }
@@ -500,6 +531,11 @@ function openMediaModal(filename) {
       <button class="btn-secondary" onclick="openCropModal('${item.name}', 'vid2vid-source'); closeMediaModal();">✂️ Recadrer</button>
       <button class="btn-secondary" onclick="useAsVideoToVideo('${item.name}'); closeMediaModal();">🎞️ Transformer (Vid2Vid)</button>
       <button class="btn-secondary" onclick="useAsFaceTarget('${item.name}', true); closeMediaModal();">🎭 Cible Face Swap</button>
+      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Télécharger</button>
+    `;
+  } else if (item.is_audio) {
+    footer.innerHTML = `
+      <button class="btn-secondary" onclick="useAsTtsReference('${item.name}'); closeMediaModal();">🎙️ Voix de Référence (XTTS)</button>
       <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Télécharger</button>
     `;
   } else {
@@ -1062,6 +1098,16 @@ function initForms() {
     const isMaskEnabled = document.getElementById('i2i-enable-mask')?.checked;
     const maskData = isMaskEnabled ? (document.getElementById('i2i-mask-data')?.value.trim() || undefined) : undefined;
 
+    // LoRA options
+    const loraVal = document.getElementById('i2i-lora-select')?.value || undefined;
+    const loraScale = loraVal ? Number(document.getElementById('i2i-lora-scale')?.value || 0.8) : undefined;
+
+    // ControlNet options
+    const cnEnabled = document.getElementById('i2i-controlnet-enable')?.checked;
+    const cnType = cnEnabled ? document.getElementById('i2i-controlnet-type')?.value : undefined;
+    const cnImage = cnEnabled ? (document.getElementById('i2i-controlnet-path')?.value.trim() || undefined) : undefined;
+    const cnScale = cnEnabled ? Number(document.getElementById('i2i-controlnet-scale')?.value || 0.8) : undefined;
+
     const payload = {
       image,
       mask: maskData,
@@ -1073,6 +1119,11 @@ function initForms() {
       output: document.getElementById('i2i-output').value.trim() || 'output_img2img.png',
       local: isLocal,
       local_model: isLocal ? localModel : undefined,
+      lora: loraVal,
+      lora_scale: loraScale,
+      controlnet_image: cnImage,
+      controlnet_type: cnType,
+      controlnet_scale: cnScale,
     };
 
     submitJob('img2img', payload, e.target);
@@ -1124,6 +1175,17 @@ function initForms() {
     const [width, height] = document.getElementById('t2i-format').value.split('x').map(Number);
     const isLocal = document.getElementById('t2i-mode') ? document.getElementById('t2i-mode').value === 'local' : false;
     const localModel = document.getElementById('t2i-local-model') ? document.getElementById('t2i-local-model').value : undefined;
+
+    // LoRA options
+    const loraVal = document.getElementById('t2i-lora-select')?.value || undefined;
+    const loraScale = loraVal ? Number(document.getElementById('t2i-lora-scale')?.value || 0.8) : undefined;
+
+    // ControlNet options
+    const cnEnabled = document.getElementById('t2i-controlnet-enable')?.checked;
+    const cnType = cnEnabled ? document.getElementById('t2i-controlnet-type')?.value : undefined;
+    const cnImage = cnEnabled ? (document.getElementById('t2i-controlnet-path')?.value.trim() || undefined) : undefined;
+    const cnScale = cnEnabled ? Number(document.getElementById('t2i-controlnet-scale')?.value || 0.8) : undefined;
+
     const payload = {
       prompt,
       width,
@@ -1132,6 +1194,11 @@ function initForms() {
       output: document.getElementById('t2i-output').value.trim() || (isLocal ? 'local_image.png' : 'flux_image.png'),
       local: isLocal,
       local_model: isLocal ? localModel : undefined,
+      lora: loraVal,
+      lora_scale: loraScale,
+      controlnet_image: cnImage,
+      controlnet_type: cnType,
+      controlnet_scale: cnScale,
     };
 
     submitJob('txt2img', payload, e.target);
@@ -1176,6 +1243,157 @@ function initForms() {
       }
     }
   });
+
+  // Text-to-Speech
+  document.getElementById('form-tts')?.addEventListener('submit', handleTtsSubmit);
+
+  // LoRA Training
+  document.getElementById('form-lora-train')?.addEventListener('submit', handleLoraTrainSubmit);
+}
+
+// ----------------------------------------------------
+// Text-to-Speech (TTS) Submission & Controls
+// ----------------------------------------------------
+async function handleTtsSubmit(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  const text = document.getElementById('tts-text')?.value.trim();
+  if (!text) return showToast('Veuillez saisir un texte à synthétiser', 'error');
+
+  const engine = document.getElementById('tts-engine')?.value || 'kokoro';
+  const language = document.getElementById('tts-language')?.value || 'fr';
+  const voice = document.getElementById('tts-voice')?.value || 'ff_siwis';
+  const speed = parseFloat(document.getElementById('tts-speed')?.value) || 1.0;
+  const speakerWav = document.getElementById('tts-speaker-wav')?.value.trim() || undefined;
+
+  const payload = {
+    text,
+    engine,
+    language,
+    voice,
+    speed,
+    speaker_wav: speakerWav,
+  };
+
+  const formOrBtn = document.getElementById('form-tts') || (e && (e.currentTarget || e.target));
+  submitJob('tts', payload, formOrBtn);
+  return false;
+}
+window.handleTtsSubmit = handleTtsSubmit;
+
+// ----------------------------------------------------
+// Text-to-Speech (TTS) Voice & Engine Controls
+// ----------------------------------------------------
+const TTS_VOICES = {
+  kokoro: {
+    fr: [
+      { id: 'ff_siwis', name: 'ff_siwis (Française - Naturelle & douce)' },
+    ],
+    en: [
+      { id: 'af_bella', name: 'af_bella (Américaine - Chaleureuse)' },
+      { id: 'af_sarah', name: 'af_sarah (Américaine - Calme & posée)' },
+      { id: 'af_heart', name: 'af_heart (Américaine - Expressive)' },
+      { id: 'am_adam', name: 'am_adam (Américain - Homme posé)' },
+      { id: 'am_michael', name: 'am_michael (Américain - Homme dynamique)' },
+      { id: 'bf_emma', name: 'bf_emma (Britannique - Distinguée)' },
+      { id: 'bm_george', name: 'bm_george (Britannique - Homme)' },
+    ],
+    es: [
+      { id: 'ef_dora', name: 'ef_dora (Espagnole - Féminine)' },
+      { id: 'em_alex', name: 'em_alex (Espagnol - Masculin)' },
+    ],
+    it: [
+      { id: 'if_sara', name: 'if_sara (Italienne - Féminine)' },
+      { id: 'im_nicola', name: 'im_nicola (Italien - Masculin)' },
+    ],
+    pt: [
+      { id: 'pf_dora', name: 'pf_dora (Portugaise - Féminine)' },
+    ],
+    ja: [
+      { id: 'jf_alpha', name: 'jf_alpha (Japonaise - Féminine)' },
+    ],
+    zh: [
+      { id: 'zf_xiaobei', name: 'zf_xiaobei (Chinoise - Féminine)' },
+    ],
+    de: [
+      { id: 'af_bella', name: 'af_bella (Voix polyglotte)' },
+    ],
+  },
+  xtts: {
+    all: [
+      { id: 'Claribel Dervla', name: 'Claribel Dervla (Féminine)' },
+      { id: 'Daisy Studious', name: 'Daisy Studious (Féminine calme)' },
+      { id: 'Gracie Wise', name: 'Gracie Wise (Féminine expressive)' },
+      { id: 'Tammie Ema', name: 'Tammie Ema (Féminine claire)' },
+      { id: 'Alison Dietlinde', name: 'Alison Dietlinde (Féminine douce)' },
+      { id: 'Ana Florence', name: 'Ana Florence (Féminine chaleureuse)' },
+      { id: 'Damien Black', name: 'Damien Black (Masculin grave)' },
+      { id: 'Baldur Sanjin', name: 'Baldur Sanjin (Masculin posé)' },
+      { id: 'Craig Gutsy', name: 'Craig Gutsy (Masculin dynamique)' },
+    ]
+  }
+};
+
+function handleTtsEngineChange() {
+  const engine = document.getElementById('tts-engine').value;
+  const xttsGroup = document.getElementById('tts-xtts-ref-group');
+  if (xttsGroup) {
+    xttsGroup.style.display = (engine === 'xtts') ? 'block' : 'none';
+  }
+  updateTtsVoiceDropdown();
+}
+
+function handleTtsLanguageChange() {
+  updateTtsVoiceDropdown();
+}
+
+function updateTtsVoiceDropdown() {
+  const engine = document.getElementById('tts-engine')?.value || 'kokoro';
+  const lang = document.getElementById('tts-language')?.value || 'fr';
+  const voiceSelect = document.getElementById('tts-voice');
+  if (!voiceSelect) return;
+
+  voiceSelect.innerHTML = '';
+  let list = [];
+  if (engine === 'kokoro') {
+    list = (TTS_VOICES.kokoro[lang] || TTS_VOICES.kokoro.en || []);
+  } else {
+    list = TTS_VOICES.xtts.all;
+  }
+
+  list.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.innerText = v.name;
+    voiceSelect.appendChild(opt);
+  });
+}
+
+function useAsTtsReference(filename) {
+  switchTab('studio');
+  switchPipeline('tts');
+  const engineSelect = document.getElementById('tts-engine');
+  if (engineSelect) {
+    engineSelect.value = 'xtts';
+    handleTtsEngineChange();
+  }
+  const inputEl = document.getElementById('tts-speaker-wav');
+  if (inputEl) {
+    inputEl.value = filename;
+  }
+  showToast(`Échantillon vocal XTTS sélectionné : ${filename}`, 'success');
+}
+
+function reuseMedia(filename, isVideo, isAudio = false) {
+  if (isAudio) {
+    useAsTtsReference(filename);
+  } else if (isVideo) {
+    useAsVideoToVideo(filename);
+  } else {
+    useAsImageToVideo(filename);
+  }
 }
 
 // Inline prompt enhancer helper
@@ -1283,6 +1501,7 @@ async function pollJobs() {
     if (completedCount > lastCompletedJobCount) {
       lastCompletedJobCount = completedCount;
       loadMedia();
+      loadLoras();
       fetchBalance(false);
     }
 
@@ -1302,6 +1521,8 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+let lastRenderedPreviewKey = '';
+
 function updateLivePanel(latestJob) {
   const badge = document.getElementById('live-job-status-badge');
   const previewBox = document.getElementById('live-preview-box');
@@ -1311,6 +1532,7 @@ function updateLivePanel(latestJob) {
   const activeOrLatest = runningJob || latestJob;
 
   if (!activeOrLatest) {
+    lastRenderedPreviewKey = '';
     badge.className = 'badge';
     badge.innerText = 'En veille';
     previewBox.innerHTML = `
@@ -1323,19 +1545,29 @@ function updateLivePanel(latestJob) {
     return;
   }
 
+  // Update logs (sans toucher au lecteur média)
+  if (activeOrLatest.logs && activeOrLatest.logs.length > 0) {
+    const container = document.getElementById('live-logs-container');
+    if (container) {
+      container.innerHTML = activeOrLatest.logs.map(log => `<div class="log-line ${log.level}">${log.message}</div>`).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
   if (activeOrLatest.status === 'RUNNING' || activeOrLatest.status === 'IN_PROGRESS' || activeOrLatest.status === 'IN_QUEUE') {
-    const rStatus = activeOrLatest.runpod_status || 'IN_QUEUE';
+    lastRenderedPreviewKey = `${activeOrLatest.id}_running`;
+    const rStatus = activeOrLatest.runpod_status || 'IN_PROGRESS';
     
-    let subStatusText = '⚡ Traitement GPU en cours sur RunPod Serverless...';
+    let subStatusText = '⚡ Traitement en cours...';
     let badgeLabel = `En cours : ${activeOrLatest.pipeline_type.toUpperCase()}`;
     let badgeClass = 'badge running';
 
     if (rStatus === 'IN_QUEUE') {
-      subStatusText = '⏳ En file d\'attente RunPod (Recherche d\'un GPU disponible / Cold Start)...';
-      badgeLabel = '⏳ File d\'attente RunPod';
+      subStatusText = '⏳ En file d\'attente...';
+      badgeLabel = '⏳ File d\'attente';
     } else if (rStatus === 'IN_PROGRESS') {
-      subStatusText = '⚡ Worker GPU actif : Rendu en cours sur le GPU...';
-      badgeLabel = '⚡ Rendu GPU Actif';
+      subStatusText = '⚡ Exécution en cours sur GPU...';
+      badgeLabel = '⚡ Rendu Actif';
     }
 
     badge.className = badgeClass;
@@ -1348,13 +1580,19 @@ function updateLivePanel(latestJob) {
       faceswap: '🎭 Face Swap (ReActor / InsightFace)',
       vid2vid: '🎞️ Transformation Video-to-Video',
       txt2img: '✨ Génération Image (Flux)',
-      enhance: '🧠 Optimisation Prompt (Qwen3)'
+      enhance: '🧠 Optimisation Prompt (Qwen3)',
+      tts: '🎙️ Synthèse Vocale (Text-to-Speech)',
+      lora_train: '🎓 Entraînement LoRA Fine-Tuning'
     };
 
     const label = pipelineLabels[activeOrLatest.pipeline_type] || activeOrLatest.pipeline_type.toUpperCase();
     const promptText = activeOrLatest.prompt || activeOrLatest.source || 'Traitement du média...';
-    const runpodJobId = activeOrLatest.runpod_job_id || 'En cours de soumission...';
-    const endpointName = activeOrLatest.runpod_endpoint || '1peyap2qc3tx31';
+    const runpodJobId = activeOrLatest.runpod_job_id || (activeOrLatest.pipeline_type === 'lora_train' ? 'Local RTX 2080' : 'Local / GPU');
+    const endpointName = activeOrLatest.runpod_endpoint || (activeOrLatest.pipeline_type === 'tts' || activeOrLatest.pipeline_type === 'lora_train' ? 'Local RTX 2080' : 'RunPod Serverless');
+
+    if (activeOrLatest.stage_info) {
+      subStatusText = activeOrLatest.stage_info;
+    }
 
     previewBox.innerHTML = `
       <div class="live-running-card">
@@ -1363,9 +1601,9 @@ function updateLivePanel(latestJob) {
         <div class="live-running-sub">${subStatusText}</div>
         <div class="live-running-meta-grid">
           <div class="live-meta-pill"><span>Temps écoulé</span><strong>⏱️ ${activeOrLatest.elapsed_seconds || 0}s</strong></div>
-          <div class="live-meta-pill"><span>Statut RunPod</span><strong class="status-${rStatus.toLowerCase()}">${rStatus}</strong></div>
+          <div class="live-meta-pill"><span>Statut</span><strong class="status-${rStatus.toLowerCase()}">${rStatus}</strong></div>
           <div class="live-meta-pill" style="grid-column: 1 / -1;"><span>Job ID :</span> <code>${runpodJobId}</code></div>
-          <div class="live-meta-pill" style="grid-column: 1 / -1;"><span>Endpoint :</span> <code>${endpointName}</code></div>
+          <div class="live-meta-pill" style="grid-column: 1 / -1;"><span>Moteur :</span> <code>${endpointName}</code></div>
         </div>
         <div class="live-running-prompt">"${escapeHtml(promptText)}"</div>
       </div>
@@ -1374,15 +1612,54 @@ function updateLivePanel(latestJob) {
     badge.className = 'badge success';
     badge.innerText = 'Terminé avec succès';
 
+    const completedKey = `${activeOrLatest.id}_completed_${activeOrLatest.result_file || ''}`;
+    // CRITIQUE : Si ce média est DÉJÀ rendu, ne PAS réinitialiser le DOM toutes les 2.5s pour ne pas couper le son ou relancer en boucle !
+    if (lastRenderedPreviewKey === completedKey) {
+      return;
+    }
+    lastRenderedPreviewKey = completedKey;
+
     if (activeOrLatest.result_file) {
       const isVideo = activeOrLatest.result_file.endsWith('.mp4') || activeOrLatest.result_file.endsWith('.webm');
-      if (isVideo) {
+      const isAudio = activeOrLatest.result_file.endsWith('.wav') || activeOrLatest.result_file.endsWith('.mp3') || activeOrLatest.result_file.endsWith('.ogg');
+      const isLora = activeOrLatest.pipeline_type === 'lora_train' || activeOrLatest.result_file.endsWith('.safetensors');
+
+      if (isLora) {
+        previewBox.innerHTML = `
+          <div class="audio-live-preview-card" style="border-color: rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05);">
+            <div class="audio-pulse-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">🎓</div>
+            <div class="audio-filename-display" style="font-size: 1.1rem; font-weight: 700; color: #fff;">${escapeHtml(activeOrLatest.result_file)}</div>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin: 8px 0 16px;">Modèle LoRA entraîné avec succès sur votre RTX 2080 ! Disponible immédiatement dans vos formulaires de création.</p>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              <button class="btn-primary btn-sm btn-glow" onclick="useTrainedLora('${escapeHtml(activeOrLatest.result_file)}')">🎨 Utiliser dans Text-to-Image</button>
+            </div>
+          </div>
+        `;
+      } else if (isVideo) {
         previewBox.innerHTML = `<video src="/api/media/${encodeURIComponent(activeOrLatest.result_file)}" controls autoplay loop></video>`;
+      } else if (isAudio) {
+        previewBox.innerHTML = `
+          <div class="audio-live-preview-card">
+            <div class="audio-pulse-icon">🎙️</div>
+            <div class="audio-filename-display">${escapeHtml(activeOrLatest.result_file)}</div>
+            <audio id="live-audio-player" src="/api/media/${encodeURIComponent(activeOrLatest.result_file)}" controls preload="auto" style="width: 100%; margin: 15px 0;"></audio>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              <button class="btn-secondary btn-sm" onclick="useAsTtsReference('${escapeHtml(activeOrLatest.result_file)}')">🎙️ Cloner cette voix (XTTS)</button>
+              <button class="btn-primary btn-sm" onclick="downloadMedia('${escapeHtml(activeOrLatest.result_file)}')">⬇️ Télécharger</button>
+            </div>
+          </div>
+        `;
+        // Jouer une seule fois au chargement du résultat
+        setTimeout(() => {
+          const a = document.getElementById('live-audio-player');
+          if (a) a.play().catch(() => {});
+        }, 150);
       } else {
         previewBox.innerHTML = `<img src="/api/media/${encodeURIComponent(activeOrLatest.result_file)}" alt="Résultat">`;
       }
     }
   } else if (activeOrLatest.status === 'FAILED') {
+    lastRenderedPreviewKey = `${activeOrLatest.id}_failed`;
     badge.className = 'badge error';
     badge.innerText = 'Échec du job';
     previewBox.innerHTML = `
@@ -1392,13 +1669,6 @@ function updateLivePanel(latestJob) {
         <small>Consultez le terminal de logs ci-dessous pour voir le détail de l'erreur.</small>
       </div>
     `;
-  }
-
-  // Update logs
-  if (activeOrLatest.logs && activeOrLatest.logs.length > 0) {
-    const container = document.getElementById('live-logs-container');
-    container.innerHTML = activeOrLatest.logs.map(log => `<div class="log-line ${log.level}">${log.message}</div>`).join('');
-    container.scrollTop = container.scrollHeight;
   }
 }
 
@@ -1737,6 +2007,9 @@ function usePromptInStudio(text, category) {
   } else if (category === 'enhance') {
     targetPipeline = 'enhance';
     targetInput = 'enh-prompt';
+  } else if (category === 'tts') {
+    targetPipeline = 'tts';
+    targetInput = 'tts-text';
   }
 
   switchPipeline(targetPipeline);
@@ -2159,3 +2432,395 @@ function clearCurrentMask() {
   if (previewEl) previewEl.innerHTML = `<span class="mask-placeholder-text">Aucun tracé</span>`;
   showToast('Masque effacé', 'info');
 }
+
+// ----------------------------------------------------
+// LoRA & ControlNet Helpers
+// ----------------------------------------------------
+function toggleCollapsible(bodyId, iconId) {
+  const body = document.getElementById(bodyId);
+  const icon = document.getElementById(iconId);
+  if (body) body.classList.toggle('collapsed');
+  if (icon) icon.classList.toggle('collapsed');
+}
+
+function toggleControlNetVisibility(prefix) {
+  const enable = document.getElementById(`${prefix}-controlnet-enable`);
+  const fields = document.getElementById(`${prefix}-controlnet-fields`);
+  if (fields && enable) {
+    fields.style.display = enable.checked ? 'block' : 'none';
+  }
+}
+
+function clearControlNetRef(prefix) {
+  const input = document.getElementById(`${prefix}-controlnet-path`);
+  const preview = document.getElementById(`${prefix}-controlnet-preview`);
+  if (input) input.value = '';
+  if (preview) preview.innerHTML = '<div class="empty-state-selector"><span>🖼️ Image guide personnalisée (ou laisser vide)</span></div>';
+  showToast('Référence ControlNet effacée', 'info');
+}
+
+async function loadLoras() {
+  try {
+    const res = await fetch('/api/loras');
+    if (!res.ok) return;
+    const loras = await res.json();
+    const dropdowns = document.querySelectorAll('.lora-select-dropdown');
+    dropdowns.forEach(dd => {
+      const currentVal = dd.value;
+      let html = '<option value="">Aucun (Modèle pur)</option>';
+      if (Array.isArray(loras) && loras.length > 0) {
+        loras.forEach(l => {
+          html += `<option value="${l.path}">${l.filename} (${l.size_mb} MB)</option>`;
+        });
+      }
+      dd.innerHTML = html;
+      if (currentVal) dd.value = currentVal;
+    });
+  } catch (err) {
+    console.warn('Erreur chargement LoRAs:', err);
+  }
+}
+
+// Global window bindings
+window.toggleCollapsible = toggleCollapsible;
+window.toggleControlNetVisibility = toggleControlNetVisibility;
+window.clearControlNetRef = clearControlNetRef;
+window.loadLoras = loadLoras;
+
+// ----------------------------------------------------
+// Wi-Fi Mobile Modal
+// ----------------------------------------------------
+async function openWifiModal() {
+  const modal = document.getElementById('wifi-modal');
+  if (!modal) return;
+  modal.classList.add('active');
+
+  const linkEl = document.getElementById('wifi-url-link');
+  const qrImg = document.getElementById('wifi-qr-img');
+
+  try {
+    const res = await fetch('/api/network');
+    if (res.ok) {
+      const data = await res.json();
+      const mobileUrl = data.mobile_url || `http://${window.location.hostname}:3000`;
+      if (linkEl) {
+        linkEl.href = mobileUrl;
+        linkEl.innerText = mobileUrl;
+      }
+      if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileUrl)}`;
+      }
+    } else {
+      fallbackWifiUrl();
+    }
+  } catch (e) {
+    fallbackWifiUrl();
+  }
+
+  function fallbackWifiUrl() {
+    const host = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '10.0.0.18' : window.location.hostname;
+    const url = `http://${host}:${window.location.port || 3000}`;
+    if (linkEl) {
+      linkEl.href = url;
+      linkEl.innerText = url;
+    }
+    if (qrImg) {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+    }
+  }
+}
+
+function closeWifiModal() {
+  const modal = document.getElementById('wifi-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+window.openWifiModal = openWifiModal;
+window.closeWifiModal = closeWifiModal;
+
+// ----------------------------------------------------
+// LoRA Training Studio Functions
+// ----------------------------------------------------
+let cachedLoraDatasets = [];
+
+function initLoraTraining() {
+  const dropzone = document.getElementById('lora-dropzone');
+  if (dropzone) {
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('drag-over');
+    });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        uploadLoraFilesList(e.dataTransfer.files);
+      }
+    });
+  }
+}
+
+async function loadLoraDatasets(targetSelectName = null) {
+  try {
+    const res = await fetch('/api/lora/datasets');
+    if (!res.ok) return;
+    cachedLoraDatasets = await res.json();
+
+    const select = document.getElementById('lora-dataset-select');
+    if (!select) return;
+
+    let html = '<option value="__new__">➕ Nouveau Dataset...</option>';
+    cachedLoraDatasets.forEach(ds => {
+      html += `<option value="${escapeHtml(ds.name)}">📁 ${escapeHtml(ds.name)} (${ds.image_count} photos)</option>`;
+    });
+    select.innerHTML = html;
+
+    if (targetSelectName && cachedLoraDatasets.some(ds => ds.name === targetSelectName)) {
+      select.value = targetSelectName;
+    } else if (cachedLoraDatasets.length > 0 && !targetSelectName) {
+      select.value = cachedLoraDatasets[0].name;
+    }
+
+    handleLoraDatasetChange();
+  } catch (err) {
+    console.warn('Erreur chargement datasets LoRA:', err);
+  }
+}
+
+function handleLoraDatasetChange() {
+  const select = document.getElementById('lora-dataset-select');
+  const newGroup = document.getElementById('lora-new-dataset-group');
+  const outInput = document.getElementById('lora-output-name');
+  if (!select) return;
+
+  const val = select.value;
+  if (val === '__new__') {
+    if (newGroup) newGroup.style.display = 'block';
+    renderDatasetImages(null);
+    if (outInput && !outInput.value) outInput.value = 'mon_modele.safetensors';
+  } else {
+    if (newGroup) newGroup.style.display = 'none';
+    const currentDs = cachedLoraDatasets.find(ds => ds.name === val);
+    renderDatasetImages(currentDs);
+    if (outInput) {
+      const cleanName = val.replace(/[^a-zA-Z0-9_-]/g, '_');
+      outInput.value = `${cleanName}.safetensors`;
+    }
+  }
+}
+
+function renderDatasetImages(dataset) {
+  const container = document.getElementById('dataset-images-container');
+  if (!container) return;
+
+  if (!dataset || !dataset.images || dataset.images.length === 0) {
+    container.innerHTML = `
+      <div class="empty-dataset-hint">
+        <span>🖼️</span>
+        <p>Aucune photo dans ce dataset pour le moment. Déposez vos photos ci-dessus pour commencer.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = dataset.images.map(img => `
+    <div class="dataset-image-card">
+      <img class="dataset-image-thumb" src="${img.path}" alt="${escapeHtml(img.name)}" loading="lazy">
+      <div class="dataset-image-body">
+        <span class="dataset-image-name" title="${escapeHtml(img.name)}">${escapeHtml(img.name)}</span>
+        <textarea class="dataset-image-caption-input" placeholder="Légende d'entraînement..." 
+          onchange="saveDatasetCaption('${escapeHtml(dataset.name)}', '${escapeHtml(img.name)}', this.value)"
+        >${escapeHtml(img.caption || '')}</textarea>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function handleLoraFilesUpload(event) {
+  const files = event.target.files;
+  if (files && files.length > 0) {
+    await uploadLoraFilesList(files);
+  }
+  event.target.value = '';
+}
+
+async function uploadLoraFilesList(files) {
+  const select = document.getElementById('lora-dataset-select');
+  const nameInput = document.getElementById('lora-dataset-name');
+
+  let datasetName = select?.value;
+  if (datasetName === '__new__' || !datasetName) {
+    datasetName = nameInput?.value.trim();
+    if (!datasetName) {
+      datasetName = `dataset_${Date.now().toString().slice(-6)}`;
+      if (nameInput) nameInput.value = datasetName;
+    }
+  }
+
+  showToast(`Téléversement de ${files.length} photos vers '${datasetName}'...`, 'info');
+  const formData = new FormData();
+  for (let i = 0; i < files.length; i++) {
+    formData.append(`file_${i}`, files[i]);
+  }
+
+  try {
+    const res = await fetch(`/api/lora/datasets/${encodeURIComponent(datasetName)}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Échec du téléversement');
+
+    showToast(`✓ ${data.uploaded_count} photos ajoutées au dataset '${datasetName}' !`, 'success');
+    await loadLoraDatasets(datasetName);
+  } catch (err) {
+    showToast(`Erreur : ${err.message}`, 'error');
+  }
+}
+
+async function triggerAutoCaption() {
+  const select = document.getElementById('lora-dataset-select');
+  const triggerInput = document.getElementById('lora-trigger');
+  const catSelect = document.getElementById('lora-category');
+  const btn = document.getElementById('btn-autocaption');
+  const btnText = document.getElementById('btn-autocaption-text');
+
+  const datasetName = select?.value;
+  if (!datasetName || datasetName === '__new__') {
+    return showToast('Veuillez d\'abord téléverser des images dans votre dataset.', 'warn');
+  }
+
+  const trigger = triggerInput?.value.trim() || 'sks person';
+  const category = catSelect?.value || 'general';
+
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.innerHTML = '🪄 Légendage en cours...';
+
+  try {
+    const res = await fetch('/api/lora/autocaption', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataset_name: datasetName,
+        trigger,
+        category,
+        overwrite: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur lors du légendage');
+
+    showToast(`✓ ${data.count} photos légendées avec le mot-clé '${trigger}' !`, 'success');
+    await loadLoraDatasets(datasetName);
+  } catch (err) {
+    showToast(`Erreur auto-caption : ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.innerHTML = '🪄 Auto-Légender avec l\'IA';
+  }
+}
+
+async function saveDatasetCaption(datasetName, imageName, caption) {
+  try {
+    await fetch('/api/lora/caption', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataset_name: datasetName,
+        image_name: imageName,
+        caption: caption.trim(),
+      }),
+    });
+  } catch (err) {
+    console.warn('Erreur sauvegarde légende:', err);
+  }
+}
+
+async function handleLoraTrainSubmit(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const select = document.getElementById('lora-dataset-select');
+  const datasetName = select?.value;
+  if (!datasetName || datasetName === '__new__') {
+    return showToast('Veuillez sélectionner un dataset contenant des photos pour démarrer l\'entraînement.', 'error');
+  }
+
+  const currentDs = cachedLoraDatasets.find(ds => ds.name === datasetName);
+  if (!currentDs || currentDs.image_count === 0) {
+    return showToast('Ce dataset ne contient aucune image. Veuillez téléverser des photos avant d\'entraîner.', 'error');
+  }
+
+  const outputName = document.getElementById('lora-output-name')?.value.trim() || `${datasetName}.safetensors`;
+  const trigger = document.getElementById('lora-trigger')?.value.trim() || 'sks person';
+  const baseModel = document.getElementById('lora-base-model')?.value || 'runwayml/stable-diffusion-v1-5';
+  const steps = parseInt(document.getElementById('lora-train-steps')?.value, 10) || 500;
+  const rank = parseInt(document.getElementById('lora-rank')?.value, 10) || 8;
+  const resolution = baseModel.includes('sdxl') ? 1024 : 512;
+
+  const payload = {
+    dataset_name: datasetName,
+    output_name: outputName,
+    instance_prompt: trigger,
+    base_model: baseModel,
+    train_steps: steps,
+    lora_rank: rank,
+    resolution,
+    learning_rate: 0.0001,
+  };
+
+  const btn = document.getElementById('btn-submit-lora-train');
+  const btnText = document.getElementById('lora-train-submit-text');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.innerHTML = '⚡ Entraînement LoRA en cours...';
+
+  try {
+    const res = await fetch('/api/lora/train', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur lors du démarrage');
+
+    showToast(`🚀 Entraînement LoRA démarré ! (Job ${data.id})`, 'success');
+    appendTerminalLog(`🚀 Démarrage de l'entraînement LoRA : ${outputName} (${steps} steps)`, 'info');
+    pollJobs();
+  } catch (err) {
+    showToast(`Erreur : ${err.message}`, 'error');
+  } finally {
+    setTimeout(() => {
+      if (btn) btn.disabled = false;
+      if (btnText) btnText.innerHTML = '🚀 Lancer l\'Entraînement LoRA';
+    }, 2000);
+  }
+}
+
+function useTrainedLora(safetensorsFile) {
+  switchPipeline('txt2img');
+  // Sélectionner dans le dropdown LoRA
+  const dropdown = document.querySelector('#form-txt2img .lora-select-dropdown');
+  if (dropdown) {
+    for (let i = 0; i < dropdown.options.length; i++) {
+      if (dropdown.options[i].text.includes(safetensorsFile) || dropdown.options[i].value.includes(safetensorsFile)) {
+        dropdown.selectedIndex = i;
+        break;
+      }
+    }
+  }
+  showToast(`LoRA '${safetensorsFile}' sélectionné pour la génération Text-to-Image !`, 'success');
+}
+
+window.handleLoraDatasetChange = handleLoraDatasetChange;
+window.handleLoraFilesUpload = handleLoraFilesUpload;
+window.triggerAutoCaption = triggerAutoCaption;
+window.saveDatasetCaption = saveDatasetCaption;
+window.handleLoraTrainSubmit = handleLoraTrainSubmit;
+window.useTrainedLora = useTrainedLora;
+
+

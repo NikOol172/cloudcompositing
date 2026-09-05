@@ -22,6 +22,7 @@ models/
 *.pth
 *.pt
 *.ckpt
+.hf_cache/
 
 # Media outputs & generated assets
 outputs/
@@ -36,10 +37,15 @@ media/
 *.jpeg
 *.webp
 *.gif
+*.wav
+*.mp3
+*.flac
+*.ogg
 
 # Local runtime data & history
 prompts_history.json
 *.log
+datasets/
 
 # Secrets & Environment variables
 .env
