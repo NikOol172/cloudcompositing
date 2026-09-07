@@ -1,0 +1,45 @@
+# Fichiers et dossiers à exclure du contexte Docker
+target/
+.git/
+.venv/
+.venv_faceswap/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Modèles lourds et caches locaux
+models/
+.hf_cache/
+.torch_cache/
+*.onnx
+*.safetensors
+*.bin
+*.pth
+*.pt
+*.ckpt
+
+# Médias générés et datasets locaux
+outputs/
+datasets/
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.wav
+*.mp3
+
+# Secrets
+.env
+.env.*
+
+# IDE et système
+.agents/
+.vscode/
+.idea/
+.DS_Store
