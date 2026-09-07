@@ -1,12 +1,13 @@
 # ==============================================================================
 # Étape 1 : Compilation du binaire Rust (RunPod Pipeline & Web Server)
 # ==============================================================================
-FROM rust:1.80-slim-bookworm AS builder
+FROM rust:latest AS builder
 
 WORKDIR /usr/src/app
 
-# Installation des dépendances de compilation système
+# Installation de la suite de compilation C / C++ requise pour ring et extensions natives
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     pkg-config \
     libssl-dev \
     cmake \
@@ -36,8 +37,10 @@ ENV PORT=3000
 
 WORKDIR /app
 
-# Dépendances système requises pour OpenCV, TTS audio et traitements multimédias
+# Dépendances système requises pour OpenCV, TTS audio et compilations pip (insightface, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
     ffmpeg \
     libsndfile1 \
     git \
