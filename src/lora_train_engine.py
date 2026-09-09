@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 LoRA Training Engine for Stable Diffusion (SD 1.5 / SDXL).
-Optimized for 8GB VRAM (NVIDIA RTX 2080) with:
+Optimized for CUDA / Pod GPUs with:
 - Pre-cached VAE latents & pre-encoded text embeddings
 - LoRA adapters on UNet attention layers (PEFT / Diffusers)
 - FP16 mixed precision and gradient accumulation
@@ -196,7 +196,7 @@ def main():
             ).input_ids.to(device)
             text_embed = text_encoder(inputs)[0].squeeze(0)
             # Pad text embedding sequence from 77 to 80 tokens (aligned to 16-byte boundaries)
-            # This fixes hardware out-of-bounds access in CUTLASS MemEfficient attention on Turing GPUs (RTX 2080)
+            # This fixes hardware out-of-bounds access in CUTLASS MemEfficient attention on specific GPU architectures
             text_embed = F.pad(text_embed, (0, 0, 0, 3))
             cached_embeddings.append(text_embed.cpu())
 

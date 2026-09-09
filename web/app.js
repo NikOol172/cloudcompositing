@@ -10,6 +10,259 @@ let currentPickerCallback = null;
 let currentPickerType = 'all';
 let pollingInterval = null;
 
+let currentLang = 'en';
+let systemInfo = { has_gpu: false, gpu_name: null, vram_mb: null };
+
+const TRANSLATIONS = {
+  en: {
+    // Brand & Nav
+    nav_studio: "AI Generation Studio",
+    nav_gallery: "Media & Gallery",
+    nav_prompts: "Prompt History",
+    nav_jobs: "Queue & Jobs",
+    nav_settings: "Settings & API",
+    btn_mobile_access: "📱 Mobile Pod Access",
+    btn_mobile_badge: "📱 Pod Mobile",
+    mobile_modal_title: "📱 Mobile RunPod Access",
+    mobile_modal_desc: "Scan this QR code with your smartphone camera to access and control your RunPod Studio directly from your mobile device:",
+    mobile_url_label: "RunPod Mobile Web URL",
+    btn_copy_url: "📋 Copy URL",
+    btn_open_tab: "↗️ Open in New Tab",
+    mobile_tip: "💡 Tip: Open this URL in Safari (iOS) or Chrome (Android) and add it to your home screen to use it like a native mobile app!",
+    btn_close: "Close",
+    gpu_detecting: "Detecting hardware...",
+    gpu_cloud_only: "☁️ Cloud Mode (No GPU)",
+    gpu_detected: "⚡ Pod GPU:",
+    
+    // Studio Header
+    studio_title: "AI Creative Studio",
+    studio_subtitle: "Generate, animate, transform, and customize your visual assets in high definition.",
+    pipe_txt2vid: "🎬 Text-to-Video",
+    pipe_img2vid: "🖼️ Image-to-Video",
+    pipe_img2img: "🎨 Image-to-Image",
+    pipe_faceswap: "🎭 Face Swap",
+    pipe_vid2vid: "🎞️ Video-to-Video",
+    pipe_txt2img: "✨ Text-to-Image",
+    pipe_tts: "🎙️ Text-to-Speech",
+    pipe_lora: "🎓 LoRA Training",
+    pipe_enhance: "🧠 Prompt Enhancer",
+
+    // Common form elements
+    label_prompt: "Scene Prompt",
+    btn_history: "📜 History",
+    btn_enhance: "🧠 Optimize",
+    video_engine: "Video Engine",
+    initial_img_engine: "Initial Image Engine",
+    gen_engine: "Generation Engine",
+    engine_cloud: "🚀 RunPod Cloud (Flux 1 Schnell)",
+    engine_local: "⚡ Pod GPU / Local",
+    resolution: "Resolution",
+    res_hd: "720p (High Quality HD)",
+    res_fast: "480p (Fast Render)",
+    duration: "Duration (seconds)",
+    aspect_ratio: "Aspect Ratio",
+    ratio_portrait: "Portrait 9:16 (Mobile / Reels)",
+    ratio_landscape: "Landscape 16:9 (Cinema)",
+    ratio_square: "Square 1:1 (Instagram)",
+    chk_enhance_qwen: "Enable automatic prompt enhancement (Qwen3-32B)",
+    output_filename: "Output Filename",
+    btn_launch_t2v: "🚀 Generate Text-to-Video",
+
+    // Image to Video
+    label_source_media: "Source Image",
+    drop_source_media: "🖼️ Drag and drop an image here or click to choose from gallery",
+    btn_gallery: "Gallery",
+    btn_upload: "Upload",
+    btn_crop: "✂️ Crop",
+    label_i2v_prompt: "Motion Animation Prompt",
+    btn_launch_i2v: "🚀 Generate Image-to-Video",
+
+    // Image to Image
+    label_denoise: "Transformation Strength (Denoise):",
+    label_local_model: "Local Model (HuggingFace / Diffusers)",
+    btn_launch_i2i: "🎨 Generate Image-to-Image",
+
+    // Face Swap
+    label_target_media: "Target Video or Image",
+    drop_target_media: "🎬 Drag a video or image here",
+    label_source_face: "Source Face Photo",
+    drop_source_face: "👤 Drag a face photo here",
+    label_face_restorer: "Face Restoration Model",
+    label_face_quality: "Processing Quality",
+    btn_launch_faceswap: "🎭 Launch Face Swap",
+
+    // Video to Video
+    label_v2v_source: "Source Video",
+    drop_v2v_source: "🎞️ Drag a video here (.mp4, .webm)",
+    label_v2v_prompt: "Transformation / Restyling Prompt",
+    btn_launch_v2v: "🎞️ Generate Video-to-Video",
+
+    // Text to Image
+    label_t2i_prompt: "Image Description Prompt",
+    label_t2i_steps: "Inference Steps:",
+    label_t2i_guidance: "Guidance Scale (CFG):",
+    label_t2i_seed: "Seed (0 = Random):",
+    btn_launch_t2i: "✨ Generate Text-to-Image",
+
+    // Text to Speech
+    label_tts_text: "Speech Text / Dialogue Script",
+    label_tts_engine: "Voice Engine",
+    label_tts_voice: "Voice Character / Profile",
+    label_tts_speed: "Speech Rate / Speed:",
+    label_tts_ref_wav: "Voice Cloning Reference Audio (.wav)",
+    drop_tts_ref_wav: "🎙️ Select or upload a reference WAV voice sample for zero-shot cloning",
+    btn_launch_tts: "🎙️ Synthesize Speech Audio",
+
+    // LoRA Training
+    label_lora_dataset: "Dataset / Training Folder",
+    label_lora_prompt: "Trigger / Instance Prompt",
+    label_lora_model: "Base Diffusion Model",
+    label_lora_steps: "Training Steps:",
+    lora_steps_help: "500 steps ≈ 10-15 min on standard GPU for 10 images.",
+    label_lora_rank: "LoRA Rank (Capacity / Dimension)",
+    lora_hw_title: "Hardware GPU Acceleration",
+    lora_hw_desc: "VAE latents pre-cached in RAM to minimize GPU overhead.",
+    lora_vram_title: "Adaptive VRAM Optimization",
+    lora_vram_desc: "FP16 precision + Gradient Accumulation to prevent OOM.",
+    btn_launch_lora: "🚀 Launch LoRA Training",
+
+    // Auto-caption
+    label_caption_engine: "Auto-Captioning Vision Model",
+    label_caption_prefix: "Prefix / Concept Trigger",
+    btn_launch_caption: "🏷️ Auto-Caption Dataset",
+
+    // Prompt Enhancer
+    label_enhance_prompt: "Base Idea / Rough Prompt to Enhance",
+    label_enhance_style: "Creative Enhancement Style",
+    btn_launch_enhance: "🧠 Enhance Prompt with Qwen3",
+
+    // Live monitor
+    live_title: "Live Execution Monitor",
+    live_idle_title: "Ready for generation",
+    live_idle_desc: "Configure parameters on the left and start an AI task to follow live logs and outputs.",
+    live_time_elapsed: "Time Elapsed",
+    live_status: "Status",
+
+    // Gallery
+    gallery_title: "Media Manager & Production Gallery",
+    gallery_subtitle: "Access, preview, download, and reuse all your generated creations.",
+    filter_all: "All",
+    filter_videos: "Videos",
+    filter_images: "Images",
+    filter_audio: "Audio",
+    btn_refresh_media: "🔄 Refresh",
+    drop_upload_media: "Drag and drop your images or videos here to import them into your studio",
+    empty_gallery: "No media generated yet. Start with the AI Studio!",
+
+    // Prompts
+    prompts_title: "Prompt Library & History",
+    prompts_subtitle: "Save, search, reuse, and favorite your best prompts.",
+    search_prompts: "Search prompts...",
+    filter_all_prompts: "All Prompts",
+    filter_fav_prompts: "Favorites ⭐",
+    empty_prompts: "No saved prompts yet.",
+
+    // Jobs
+    jobs_title: "Queue & Job Activity",
+    jobs_subtitle: "Track real-time RunPod tasks, execution times, and engine outputs.",
+    btn_clear_jobs: "🗑️ Clear History",
+
+    // Settings
+    settings_title: "Studio Configuration & Endpoints",
+    settings_subtitle: "Configure your RunPod API key, Hugging Face Token, and serverless endpoints.",
+    label_hf_token: "Hugging Face Access Token (HF_TOKEN)",
+    settings_hf_token_help: "Required for gated models like Lightricks/LTX-Video (~11 GB). Create a Read token on huggingface.co/settings/tokens and accept the model license terms.",
+    models_manager_title: "Pod GPU Models & Hugging Face Weights",
+    models_manager_desc: "Some cutting-edge models (such as LTX-Video 2.5 DiT) run directly on your Pod's GPU rather than serverless endpoints, and require their model weights downloaded.",
+    btn_save_settings: "💾 Save Settings",
+    settings_saved: "Settings saved successfully!",
+    settings_local_model_help: "Default model loaded on Pod GPU in local mode."
+  }
+};
+
+
+function toggleLanguage() {
+  currentLang = 'en';
+  localStorage.setItem('runpod_studio_lang', 'en');
+  applyLanguage('en');
+}
+
+function applyLanguage(lang) {
+  const dict = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  
+  const labelEl = document.getElementById('lang-label');
+  if (labelEl) labelEl.textContent = lang === 'en' ? '🌐 EN' : '🌐 FR';
+  const mobileLabelEl = document.getElementById('mobile-lang-label');
+  if (mobileLabelEl) mobileLabelEl.textContent = lang.toUpperCase();
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) {
+      el.textContent = dict[key];
+    }
+  });
+
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (dict[key]) {
+      el.setAttribute('placeholder', dict[key]);
+    }
+  });
+
+  applySystemInfo();
+  renderModelsStatus();
+  updateLtxBanners();
+}
+
+async function fetchSystemInfo() {
+  try {
+    const res = await fetch('/api/system/info');
+    if (res.ok) {
+      systemInfo = await res.json();
+      applySystemInfo();
+    }
+  } catch (err) {
+    console.warn('System info check failed', err);
+  }
+}
+
+function applySystemInfo() {
+  const gpuBadgeText = document.getElementById('sidebar-gpu-text');
+  const gpuBadge = document.getElementById('sidebar-gpu-badge');
+  const t2vLocalOpt = document.getElementById('t2v-local-opt');
+  const i2iLocalOpt = document.getElementById('i2i-local-opt');
+  const t2iLocalOpt = document.getElementById('t2i-local-opt');
+  const loraHwTitle = document.getElementById('lora-hw-title');
+
+  if (systemInfo && systemInfo.has_gpu) {
+    const gpuLabel = systemInfo.gpu_name ? systemInfo.gpu_name : 'GPU Active';
+    if (gpuBadgeText) gpuBadgeText.textContent = `⚡ ${gpuLabel}`;
+    if (gpuBadge) gpuBadge.className = 'gpu-status-badge';
+
+    const localText = `⚡ Pod GPU (${gpuLabel})`;
+    if (t2vLocalOpt) { t2vLocalOpt.textContent = localText; t2vLocalOpt.disabled = false; }
+    if (i2iLocalOpt) { i2iLocalOpt.textContent = localText; i2iLocalOpt.disabled = false; }
+    if (t2iLocalOpt) { t2iLocalOpt.textContent = localText; t2iLocalOpt.disabled = false; }
+    if (loraHwTitle) loraHwTitle.textContent = `${gpuLabel} Acceleration`;
+  } else {
+    const noGpuText = '☁️ Cloud Mode (No GPU)';
+    if (gpuBadgeText) gpuBadgeText.textContent = noGpuText;
+    if (gpuBadge) gpuBadge.className = 'gpu-status-badge cloud-only';
+
+    const disabledText = '⚡ Pod GPU (Unavailable on CPU Pod)';
+    if (t2vLocalOpt) { t2vLocalOpt.textContent = disabledText; t2vLocalOpt.disabled = true; }
+    if (i2iLocalOpt) { i2iLocalOpt.textContent = disabledText; i2iLocalOpt.disabled = true; }
+    if (t2iLocalOpt) { t2iLocalOpt.textContent = disabledText; t2iLocalOpt.disabled = true; }
+
+    const t2vMode = document.getElementById('t2v-mode');
+    if (t2vMode && t2vMode.value === 'local') t2vMode.value = 'cloud';
+    const i2iMode = document.getElementById('i2i-mode');
+    if (i2iMode && i2iMode.value === 'local') { i2iMode.value = 'cloud'; if (typeof toggleI2iMode === 'function') toggleI2iMode(); }
+    const t2iMode = document.getElementById('t2i-mode');
+    if (t2iMode && t2iMode.value === 'local') { t2iMode.value = 'cloud'; if (typeof toggleT2iMode === 'function') toggleT2iMode(); }
+  }
+}
+
 function initApp() {
   initNavigation();
   initPipelineSwitcher();
@@ -23,6 +276,12 @@ function initApp() {
   loadPrompts();
   loadSettings();
   fetchBalance(false);
+  fetchSystemInfo();
+  applyLanguage(currentLang);
+
+  document.getElementById('t2v-video-model')?.addEventListener('change', updateLtxBanners);
+  document.getElementById('i2v-video-model')?.addEventListener('change', updateLtxBanners);
+  checkModelsStatus();
 
   if (!pollingInterval) {
     pollingInterval = setInterval(() => {
@@ -102,7 +361,7 @@ function switchPipeline(pipeline) {
 async function loadMedia() {
   try {
     const res = await fetch('/api/media');
-    if (!res.ok) throw new Error('Erreur lors du chargement des médias');
+    if (!res.ok) throw new Error('Failed to load media');
     allMedia = await res.json();
     document.getElementById('media-count').innerText = allMedia.length;
     renderMediaGrid();
@@ -125,8 +384,8 @@ function renderMediaGrid() {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-dim);">
-        <p style="font-size: 1.1rem; margin-bottom: 8px;">Aucun média trouvé</p>
-        <small>Importez ou générez vos premières créations depuis le studio.</small>
+        <p style="font-size: 1.1rem; margin-bottom: 8px;">No media found</p>
+        <small>Import or generate your first creations from the studio.</small>
       </div>
     `;
     return;
@@ -140,7 +399,7 @@ function renderMediaGrid() {
     let typeLabel = 'Image';
     if (item.is_video) {
       thumbHtml = `<video src="/api/media/${encodeURIComponent(item.name)}" muted preload="metadata"></video>
-         <span class="media-badge">🎬 VIDÉO</span>
+         <span class="media-badge">🎬 VIDEO</span>
          <div class="play-overlay-icon">▶</div>`;
       typeLabel = 'MP4';
     } else if (item.is_audio) {
@@ -167,7 +426,7 @@ function renderMediaGrid() {
           <span>${typeLabel}</span>
         </div>
         <div class="media-actions">
-          <button class="btn-secondary btn-sm" onclick="reuseMedia('${item.name}', ${item.is_video}, ${item.is_audio || false})">⚡ Réutiliser</button>
+          <button class="btn-secondary btn-sm" onclick="reuseMedia('${item.name}', ${item.is_video}, ${item.is_audio || false})">⚡ Reuse</button>
           <button class="btn-secondary btn-sm" onclick="downloadMedia('${item.name}')">⬇️</button>
           <button class="btn-danger btn-sm" onclick="deleteMedia('${item.name}')">🗑️</button>
         </div>
@@ -284,14 +543,14 @@ function renderMediaPreviewHtml(filename, isVideo) {
   if (isVideo) {
     const encoded = encodeURIComponent(filename);
     const escaped = escapeHtml(filename);
-    return `<video src="/api/media/${encoded}" autoplay loop muted playsinline onerror="this.outerHTML='<div class=\\'video-codec-box\\'>🎬 <strong>${escaped}</strong><br><small>Fichier vidéo prêt pour RunPod</small></div>'"></video>`;
+    return `<video src="/api/media/${encoded}" autoplay loop muted playsinline onerror="this.outerHTML='<div class=\\'video-codec-box\\'>🎬 <strong>${escaped}</strong><br><small>Video file ready for RunPod</small></div>'"></video>`;
   } else {
     return `<img src="/api/media/${encodeURIComponent(filename)}" alt="${filename}">`;
   }
 }
 
 async function uploadAndSelectFile(file, targetInputId, previewContainerId) {
-  showToast(`Téléversement de ${file.name}...`, 'info');
+  showToast(`Uploading ${file.name}...`, 'info');
   const formData = new FormData();
   formData.append('file', file);
 
@@ -300,7 +559,7 @@ async function uploadAndSelectFile(file, targetInputId, previewContainerId) {
       method: 'POST',
       body: formData,
     });
-    if (!res.ok) throw new Error('Échec du téléversement');
+    if (!res.ok) throw new Error('Upload failed');
     const data = await res.json();
     const uploadedName = data.filename || file.name;
 
@@ -313,7 +572,7 @@ async function uploadAndSelectFile(file, targetInputId, previewContainerId) {
       previewEl.innerHTML = renderMediaPreviewHtml(uploadedName, isVideo);
     }
 
-    showToast(`✓ ${uploadedName} téléversé et sélectionné`, 'success');
+    showToast(`✓ ${uploadedName} uploaded and selected`, 'success');
     await loadMedia();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
@@ -327,14 +586,14 @@ async function uploadFiles(files) {
     const formData = new FormData();
     formData.append('file', file);
 
-    showToast(`Téléversement de ${file.name}...`, 'info');
+    showToast(`Uploading ${file.name}...`, 'info');
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
-      if (!res.ok) throw new Error('Échec du téléversement');
-      showToast(`${file.name} importé avec succès`, 'success');
+      if (!res.ok) throw new Error('Upload failed');
+      showToast(`${file.name} imported successfully`, 'success');
     } catch (err) {
       showToast(`Erreur : ${err.message}`, 'error');
     }
@@ -344,14 +603,14 @@ async function uploadFiles(files) {
 }
 
 async function deleteMedia(filename) {
-  if (!confirm(`Supprimer définitivement '${filename}' ?`)) return;
+  if (!confirm(`Permanently delete '${filename}'?`)) return;
 
   try {
     const res = await fetch(`/api/media/${encodeURIComponent(filename)}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Impossible de supprimer le fichier');
-    showToast(`Fichier ${filename} supprimé`, 'success');
+    if (!res.ok) throw new Error('Failed to delete file');
+    showToast(`File ${filename} deleted`, 'success');
     loadMedia();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
@@ -388,16 +647,16 @@ async function openMediaPicker(targetInputId, previewContainerId, allowedType = 
 
   const titleEl = document.getElementById('picker-modal-title');
   if (titleEl) {
-    if (allowedType === 'image') titleEl.innerText = '🖼️ Choisir une Image Source';
-    else if (allowedType === 'video') titleEl.innerText = '🎬 Choisir une Vidéo Source';
-    else if (allowedType === 'audio') titleEl.innerText = '🎙️ Choisir un Extrait Audio (Référence XTTS)';
-    else titleEl.innerText = '📁 Choisir un Média Source';
+    if (allowedType === 'image') titleEl.innerText = '🖼️ Choose Source Image';
+    else if (allowedType === 'video') titleEl.innerText = '🎬 Choose Source Video';
+    else if (allowedType === 'audio') titleEl.innerText = '🎙️ Choose Audio Clip (XTTS Reference)';
+    else titleEl.innerText = '📁 Choose Source Media';
   }
 
   const searchInput = document.getElementById('picker-search-input');
   if (searchInput) searchInput.value = '';
 
-  // Rafraîchir systématiquement la liste des fichiers depuis le disque
+  // Refresh file list from disk
   await loadMedia();
   renderPickerGrid('');
 
@@ -428,8 +687,8 @@ function renderPickerGrid(searchQuery = '') {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-dim);">
-        <p style="font-size: 1.1rem; margin-bottom: 8px;">Aucun média trouvé</p>
-        <small>Les fichiers générés ou importés apparaîtront ici.</small>
+        <p style="font-size: 1.1rem; margin-bottom: 8px;">No media found</p>
+        <small>Generated or imported files will appear here.</small>
       </div>
     `;
     return;
@@ -443,7 +702,7 @@ function renderPickerGrid(searchQuery = '') {
 
     let thumbHtml;
     if (item.is_video) {
-      thumbHtml = `<video src="/api/media/${encodeURIComponent(item.name)}" muted playsinline onerror="this.outerHTML='<div class=\\'video-codec-box\\'>🎬</div>'"></video><span class="media-badge">VIDÉO</span>`;
+      thumbHtml = `<video src="/api/media/${encodeURIComponent(item.name)}" muted playsinline onerror="this.outerHTML='<div class=\\'video-codec-box\\'>🎬</div>'"></video><span class="media-badge">VIDEO</span>`;
     } else if (item.is_audio) {
       thumbHtml = `<div class="audio-card-visual" style="height: 100px;"><span style="font-size: 2.5rem;">🎙️</span></div><span class="media-badge badge-audio">AUDIO</span>`;
     } else {
@@ -528,24 +787,24 @@ function openMediaModal(filename) {
   const footer = document.getElementById('modal-footer');
   if (item.is_video) {
     footer.innerHTML = `
-      <button class="btn-secondary" onclick="openCropModal('${item.name}', 'vid2vid-source'); closeMediaModal();">✂️ Recadrer</button>
-      <button class="btn-secondary" onclick="useAsVideoToVideo('${item.name}'); closeMediaModal();">🎞️ Transformer (Vid2Vid)</button>
-      <button class="btn-secondary" onclick="useAsFaceTarget('${item.name}', true); closeMediaModal();">🎭 Cible Face Swap</button>
-      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Télécharger</button>
+      <button class="btn-secondary" onclick="openCropModal('${item.name}', 'vid2vid-source'); closeMediaModal();">✂️ Crop</button>
+      <button class="btn-secondary" onclick="useAsVideoToVideo('${item.name}'); closeMediaModal();">🎞️ Transform (Vid2Vid)</button>
+      <button class="btn-secondary" onclick="useAsFaceTarget('${item.name}', true); closeMediaModal();">🎭 Face Swap Target</button>
+      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Download</button>
     `;
   } else if (item.is_audio) {
     footer.innerHTML = `
-      <button class="btn-secondary" onclick="useAsTtsReference('${item.name}'); closeMediaModal();">🎙️ Voix de Référence (XTTS)</button>
-      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Télécharger</button>
+      <button class="btn-secondary" onclick="useAsTtsReference('${item.name}'); closeMediaModal();">🎙️ Reference Voice (XTTS)</button>
+      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Download</button>
     `;
   } else {
     footer.innerHTML = `
-      <button class="btn-secondary" onclick="openCropModal('${item.name}', 'faceswap-source'); closeMediaModal();">✂️ Recadrer</button>
+      <button class="btn-secondary" onclick="openCropModal('${item.name}', 'faceswap-source'); closeMediaModal();">✂️ Crop</button>
       <button class="btn-secondary" onclick="useAsImageToImage('${item.name}'); closeMediaModal();">🎨 Image-to-Image</button>
-      <button class="btn-secondary" onclick="useAsFaceSource('${item.name}'); closeMediaModal();">🎭 Visage Face Swap</button>
-      <button class="btn-secondary" onclick="useAsFaceTarget('${item.name}', false); closeMediaModal();">🎯 Cible Face Swap</button>
-      <button class="btn-secondary" onclick="useAsImageToVideo('${item.name}'); closeMediaModal();">🖼️ Animer (Img2Vid)</button>
-      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Télécharger</button>
+      <button class="btn-secondary" onclick="useAsFaceSource('${item.name}'); closeMediaModal();">🎭 Source Face</button>
+      <button class="btn-secondary" onclick="useAsFaceTarget('${item.name}', false); closeMediaModal();">🎯 Face Swap Target</button>
+      <button class="btn-secondary" onclick="useAsImageToVideo('${item.name}'); closeMediaModal();">🖼️ Animate (Img2Vid)</button>
+      <button class="btn-primary" onclick="downloadMedia('${item.name}')">⬇️ Download</button>
     `;
   }
 
@@ -568,7 +827,7 @@ function useAsImageToImage(filename) {
     inputEl.value = filename;
     previewEl.innerHTML = `<img src="/api/media/${encodeURIComponent(filename)}" alt="Source">`;
   }
-  showToast(`Image sélectionnée pour Image-to-Image : ${filename}`, 'success');
+  showToast(`Image selected for Image-to-Image: ${filename}`, 'success');
 }
 
 // ----------------------------------------------------
@@ -603,7 +862,7 @@ function cropCurrentField(inputId) {
   const inputEl = document.getElementById(inputId);
   const filename = inputEl ? inputEl.value.trim() : '';
   if (!filename) {
-    showToast('Veuillez d\'abord choisir ou uploader un média', 'info');
+    showToast('Please select or upload media first', 'info');
     return;
   }
 
@@ -626,7 +885,7 @@ function openCropModal(filename, defaultAction = 'faceswap-target') {
   if (actionSelect) actionSelect.value = defaultAction;
 
   const titleEl = document.getElementById('crop-modal-title');
-  if (titleEl) titleEl.innerText = `✂️ Recadrer : ${filename}`;
+  if (titleEl) titleEl.innerText = `✂️ Crop: ${filename}`;
 
   const wrapper = document.getElementById('crop-media-wrapper');
   wrapper.innerHTML = '';
@@ -696,12 +955,12 @@ function initCropGeometry(mediaEl) {
     cropState.mediaWidth = mediaRect.width;
     cropState.mediaHeight = mediaRect.height;
 
-    // Calcul taille initiale (carré 1:1 au centre)
+    // Calculate initial size (1:1 square centered)
     const initialSize = Math.min(cropState.mediaWidth, cropState.mediaHeight) * 0.85;
     cropState.boxWidth = initialSize;
     cropState.boxHeight = initialSize;
     cropState.boxLeft = cropState.mediaLeft + (cropState.mediaWidth - initialSize) / 2;
-    // Positionner vers le haut où se trouve le visage
+    // Position towards top where face is located
     const topOffset = (cropState.mediaHeight - initialSize) * 0.25;
     cropState.boxTop = cropState.mediaTop + Math.max(0, topOffset);
 
@@ -752,7 +1011,7 @@ function setCropRatio(ratio) {
     cropState.boxHeight = cropState.boxWidth * (9 / 16);
   }
 
-  // Vérifier limites
+  // Check boundaries
   const maxW = cropState.mediaLeft + cropState.mediaWidth - cropState.boxLeft;
   const maxH = cropState.mediaTop + cropState.mediaHeight - cropState.boxTop;
   if (cropState.boxWidth > maxW) cropState.boxWidth = maxW;
@@ -925,7 +1184,7 @@ async function executeCrop() {
   const btn = document.getElementById('btn-submit-crop');
   const btnText = document.getElementById('btn-crop-text');
   btn.disabled = true;
-  btnText.innerText = '⏳ Traitement FFmpeg en cours...';
+  btnText.innerText = '⏳ Processing FFmpeg...';
 
   const scaleX = cropState.naturalW / cropState.mediaWidth;
   const scaleY = cropState.naturalH / cropState.mediaHeight;
@@ -962,11 +1221,11 @@ async function executeCrop() {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error('Erreur lors du recadrage');
+    if (!res.ok) throw new Error('Error during crop operation');
     const data = await res.json();
     const newFilename = data.filename;
 
-    showToast(`✓ Recadrage réussi : ${newFilename}`, 'success');
+    showToast(`✓ Crop successful: ${newFilename}`, 'success');
     await loadMedia();
 
     // Appliquer l'action choisie
@@ -988,7 +1247,7 @@ async function executeCrop() {
     showToast(`Erreur : ${err.message}`, 'error');
   } finally {
     btn.disabled = false;
-    btnText.innerText = '✂️ Valider et Recadrer';
+    btnText.innerText = '✂️ Apply & Crop';
   }
 }
 
@@ -1001,12 +1260,12 @@ function toggleI2iMode() {
 
   if (mode === 'local') {
     if (localGroup) localGroup.style.display = 'block';
-    if (submitText) submitText.textContent = '💻 Transformer Localement (GPU Diffusers)';
+    if (submitText) submitText.textContent = '💻 Generate Locally (GPU Diffusers)';
     if (stepsInput && stepsInput.value === '4') stepsInput.value = '4';
     if (outputInput && outputInput.value === 'pickleball_player.png') outputInput.value = 'local_img2img.png';
   } else {
     if (localGroup) localGroup.style.display = 'none';
-    if (submitText) submitText.textContent = '🎨 Transformer l\'Image (Image-to-Image)';
+    if (submitText) submitText.textContent = '🎨 Generate Image-to-Image';
     if (outputInput && outputInput.value === 'local_img2img.png') outputInput.value = 'pickleball_player.png';
   }
 }
@@ -1020,12 +1279,12 @@ function toggleT2iMode() {
 
   if (mode === 'local') {
     if (localGroup) localGroup.style.display = 'block';
-    if (submitText) submitText.textContent = '💻 Générer Localement (GPU Diffusers)';
+    if (submitText) submitText.textContent = '💻 Generate Locally (GPU Diffusers)';
     if (stepsInput && stepsInput.value === '4') stepsInput.value = '2';
     if (outputInput && outputInput.value === 'flux_image.png') outputInput.value = 'local_sdxl.png';
   } else {
     if (localGroup) localGroup.style.display = 'none';
-    if (submitText) submitText.textContent = '✨ Générer l\'Image (Flux)';
+    if (submitText) submitText.textContent = '✨ Generate Image (Flux)';
     if (stepsInput && stepsInput.value === '2') stepsInput.value = '4';
     if (outputInput && outputInput.value === 'local_sdxl.png') outputInput.value = 'flux_image.png';
   }
@@ -1039,7 +1298,7 @@ function initForms() {
   document.getElementById('form-txt2vid').addEventListener('submit', async e => {
     e.preventDefault();
     const prompt = document.getElementById('t2v-prompt').value.trim();
-    if (!prompt) return showToast('Veuillez saisir un prompt', 'error');
+    if (!prompt) return showToast('Please enter a prompt', 'error');
 
     const [width, height] = document.getElementById('t2v-format').value.split('x').map(Number);
     const isLocal = document.getElementById('t2v-mode') ? document.getElementById('t2v-mode').value === 'local' : false;
@@ -1063,7 +1322,7 @@ function initForms() {
   document.getElementById('form-img2vid').addEventListener('submit', async e => {
     e.preventDefault();
     const image = document.getElementById('i2v-image-path').value.trim();
-    if (!image) return showToast('Veuillez sélectionner une image source', 'error');
+    if (!image) return showToast('Please select a source image', 'error');
 
     const videoModel = document.getElementById('i2v-video-model') ? document.getElementById('i2v-video-model').value : 'wan-2-5';
     const payload = {
@@ -1082,10 +1341,10 @@ function initForms() {
   document.getElementById('form-img2img').addEventListener('submit', async e => {
     e.preventDefault();
     const image = document.getElementById('i2i-image-path').value.trim();
-    if (!image) return showToast('Veuillez sélectionner une image source', 'error');
+    if (!image) return showToast('Please select a source image', 'error');
 
     const prompt = document.getElementById('i2i-prompt').value.trim();
-    if (!prompt) return showToast('Veuillez saisir un prompt de transformation', 'error');
+    if (!prompt) return showToast('Please enter a transformation prompt', 'error');
 
     const formatVal = document.getElementById('i2i-format').value;
     let width = undefined;
@@ -1134,7 +1393,7 @@ function initForms() {
     e.preventDefault();
     const source = document.getElementById('fs-source-path').value.trim();
     const target = document.getElementById('fs-target-path').value.trim();
-    if (!source || !target) return showToast('Veuillez sélectionner le visage source ET le média cible', 'error');
+    if (!source || !target) return showToast('Please select source face AND target media', 'error');
 
     const payload = {
       source,
@@ -1151,7 +1410,7 @@ function initForms() {
   document.getElementById('form-vid2vid').addEventListener('submit', async e => {
     e.preventDefault();
     const video = document.getElementById('v2v-video-path').value.trim();
-    if (!video) return showToast('Veuillez sélectionner une vidéo source', 'error');
+    if (!video) return showToast('Please select a source video', 'error');
 
     const videoModel = document.getElementById('v2v-video-model') ? document.getElementById('v2v-video-model').value : 'wan-2-5';
     const payload = {
@@ -1170,7 +1429,7 @@ function initForms() {
   document.getElementById('form-txt2img').addEventListener('submit', async e => {
     e.preventDefault();
     const prompt = document.getElementById('t2i-prompt').value.trim();
-    if (!prompt) return showToast('Veuillez saisir un prompt', 'error');
+    if (!prompt) return showToast('Please enter a prompt', 'error');
 
     const [width, height] = document.getElementById('t2i-format').value.split('x').map(Number);
     const isLocal = document.getElementById('t2i-mode') ? document.getElementById('t2i-mode').value === 'local' : false;
@@ -1208,17 +1467,17 @@ function initForms() {
   document.getElementById('form-enhance').addEventListener('submit', async e => {
     e.preventDefault();
     const prompt = document.getElementById('enh-prompt').value.trim();
-    if (!prompt) return showToast('Veuillez saisir un prompt', 'error');
+    if (!prompt) return showToast('Please enter a prompt', 'error');
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const origHtml = submitBtn ? submitBtn.innerHTML : '';
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Optimisation en cours...</span>`;
+      submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Optimizing prompt...</span>`;
     }
 
     const resultBox = document.getElementById('enh-result');
-    resultBox.innerText = 'Optimisation en cours...';
+    resultBox.innerText = 'Optimizing prompt...';
 
     try {
       const res = await fetch('/api/generate/enhance', {
@@ -1229,10 +1488,10 @@ function initForms() {
       const data = await res.json();
       if (data.enhanced_prompt) {
         resultBox.innerText = data.enhanced_prompt;
-        showToast('Prompt optimisé avec succès !', 'success');
+        showToast('Prompt optimized successfully!', 'success');
         loadPrompts();
       } else {
-        resultBox.innerText = 'Erreur lors de l’enrichissement.';
+        resultBox.innerText = 'Error optimizing prompt.';
       }
     } catch (err) {
       resultBox.innerText = `Erreur : ${err.message}`;
@@ -1260,11 +1519,11 @@ async function handleTtsSubmit(e) {
     e.stopPropagation();
   }
   const text = document.getElementById('tts-text')?.value.trim();
-  if (!text) return showToast('Veuillez saisir un texte à synthétiser', 'error');
+  if (!text) return showToast('Please enter speech text to synthesize', 'error');
 
   const engine = document.getElementById('tts-engine')?.value || 'kokoro';
   const language = document.getElementById('tts-language')?.value || 'fr';
-  const voice = document.getElementById('tts-voice')?.value || 'ff_siwis';
+  const voice = document.getElementById('tts-voice')?.value || 'af_bella';
   const speed = parseFloat(document.getElementById('tts-speed')?.value) || 1.0;
   const speakerWav = document.getElementById('tts-speaker-wav')?.value.trim() || undefined;
 
@@ -1288,50 +1547,50 @@ window.handleTtsSubmit = handleTtsSubmit;
 // ----------------------------------------------------
 const TTS_VOICES = {
   kokoro: {
-    fr: [
-      { id: 'ff_siwis', name: 'ff_siwis (Française - Naturelle & douce)' },
-    ],
     en: [
-      { id: 'af_bella', name: 'af_bella (Américaine - Chaleureuse)' },
-      { id: 'af_sarah', name: 'af_sarah (Américaine - Calme & posée)' },
-      { id: 'af_heart', name: 'af_heart (Américaine - Expressive)' },
-      { id: 'am_adam', name: 'am_adam (Américain - Homme posé)' },
-      { id: 'am_michael', name: 'am_michael (Américain - Homme dynamique)' },
-      { id: 'bf_emma', name: 'bf_emma (Britannique - Distinguée)' },
-      { id: 'bm_george', name: 'bm_george (Britannique - Homme)' },
+      { id: 'af_bella', name: 'af_bella (US English - Warm)' },
+      { id: 'af_sarah', name: 'af_sarah (US English - Calm)' },
+      { id: 'af_heart', name: 'af_heart (US English - Expressive)' },
+      { id: 'am_adam', name: 'am_adam (US English - Deep Male)' },
+      { id: 'am_michael', name: 'am_michael (US English - Dynamic Male)' },
+      { id: 'bf_emma', name: 'bf_emma (UK English - Distinguished)' },
+      { id: 'bm_george', name: 'bm_george (UK English - Male)' },
+    ],
+    fr: [
+      { id: 'ff_siwis', name: 'ff_siwis (French - Natural & Soft)' },
     ],
     es: [
-      { id: 'ef_dora', name: 'ef_dora (Espagnole - Féminine)' },
-      { id: 'em_alex', name: 'em_alex (Espagnol - Masculin)' },
+      { id: 'ef_dora', name: 'ef_dora (Spanish - Female)' },
+      { id: 'em_alex', name: 'em_alex (Spanish - Male)' },
     ],
     it: [
-      { id: 'if_sara', name: 'if_sara (Italienne - Féminine)' },
-      { id: 'im_nicola', name: 'im_nicola (Italien - Masculin)' },
+      { id: 'if_sara', name: 'if_sara (Italian - Female)' },
+      { id: 'im_nicola', name: 'im_nicola (Italian - Male)' },
     ],
     pt: [
-      { id: 'pf_dora', name: 'pf_dora (Portugaise - Féminine)' },
+      { id: 'pf_dora', name: 'pf_dora (Portuguese - Female)' },
     ],
     ja: [
-      { id: 'jf_alpha', name: 'jf_alpha (Japonaise - Féminine)' },
+      { id: 'jf_alpha', name: 'jf_alpha (Japanese - Female)' },
     ],
     zh: [
-      { id: 'zf_xiaobei', name: 'zf_xiaobei (Chinoise - Féminine)' },
+      { id: 'zf_xiaobei', name: 'zf_xiaobei (Chinese - Female)' },
     ],
     de: [
-      { id: 'af_bella', name: 'af_bella (Voix polyglotte)' },
+      { id: 'af_bella', name: 'af_bella (German - Polyglot)' },
     ],
   },
   xtts: {
     all: [
-      { id: 'Claribel Dervla', name: 'Claribel Dervla (Féminine)' },
-      { id: 'Daisy Studious', name: 'Daisy Studious (Féminine calme)' },
-      { id: 'Gracie Wise', name: 'Gracie Wise (Féminine expressive)' },
-      { id: 'Tammie Ema', name: 'Tammie Ema (Féminine claire)' },
-      { id: 'Alison Dietlinde', name: 'Alison Dietlinde (Féminine douce)' },
-      { id: 'Ana Florence', name: 'Ana Florence (Féminine chaleureuse)' },
-      { id: 'Damien Black', name: 'Damien Black (Masculin grave)' },
-      { id: 'Baldur Sanjin', name: 'Baldur Sanjin (Masculin posé)' },
-      { id: 'Craig Gutsy', name: 'Craig Gutsy (Masculin dynamique)' },
+      { id: 'Claribel Dervla', name: 'Claribel Dervla (Female)' },
+      { id: 'Daisy Studious', name: 'Daisy Studious (Calm Female)' },
+      { id: 'Gracie Wise', name: 'Gracie Wise (Expressive Female)' },
+      { id: 'Tammie Ema', name: 'Tammie Ema (Clear Female)' },
+      { id: 'Alison Dietlinde', name: 'Alison Dietlinde (Soft Female)' },
+      { id: 'Ana Florence', name: 'Ana Florence (Warm Female)' },
+      { id: 'Damien Black', name: 'Damien Black (Deep Male)' },
+      { id: 'Baldur Sanjin', name: 'Baldur Sanjin (Steady Male)' },
+      { id: 'Craig Gutsy', name: 'Craig Gutsy (Dynamic Male)' },
     ]
   }
 };
@@ -1351,7 +1610,7 @@ function handleTtsLanguageChange() {
 
 function updateTtsVoiceDropdown() {
   const engine = document.getElementById('tts-engine')?.value || 'kokoro';
-  const lang = document.getElementById('tts-language')?.value || 'fr';
+  const lang = document.getElementById('tts-language')?.value || 'en';
   const voiceSelect = document.getElementById('tts-voice');
   if (!voiceSelect) return;
 
@@ -1383,7 +1642,7 @@ function useAsTtsReference(filename) {
   if (inputEl) {
     inputEl.value = filename;
   }
-  showToast(`Échantillon vocal XTTS sélectionné : ${filename}`, 'success');
+  showToast(`XTTS voice sample selected: ${filename}`, 'success');
 }
 
 function reuseMedia(filename, isVideo, isAudio = false) {
@@ -1400,7 +1659,7 @@ function reuseMedia(filename, isVideo, isAudio = false) {
 async function enhanceCurrentPrompt(textareaId, btnEvent) {
   const el = document.getElementById(textareaId);
   const current = el.value.trim();
-  if (!current) return showToast('Saisissez une description d\'abord', 'error');
+  if (!current) return showToast('Enter a description first', 'error');
 
   const btn = (btnEvent && btnEvent.currentTarget) || (event && event.currentTarget);
   let origHtml = '';
@@ -1410,7 +1669,7 @@ async function enhanceCurrentPrompt(textareaId, btnEvent) {
     btn.innerHTML = `⏳ Traitement...`;
   }
 
-  showToast('Optimisation du prompt en cours...', 'info');
+  showToast('Optimizing prompt...', 'info');
   try {
     const res = await fetch('/api/generate/enhance', {
       method: 'POST',
@@ -1420,7 +1679,7 @@ async function enhanceCurrentPrompt(textareaId, btnEvent) {
     const data = await res.json();
     if (data.enhanced_prompt) {
       el.value = data.enhanced_prompt;
-      showToast('Prompt enrichi appliqué !', 'success');
+      showToast('Enhanced prompt applied!', 'success');
       loadPrompts();
     }
   } catch (err) {
@@ -1447,8 +1706,8 @@ async function submitJob(type, payload, formOrBtn) {
     }
   }
 
-  showToast(`Lancement du job ${type.toUpperCase()}...`, 'info');
-  appendTerminalLog(`🚀 Lancement du job ${type.toUpperCase()}`, 'info');
+  showToast(`Launching ${type.toUpperCase()} job...`, 'info');
+  appendTerminalLog(`🚀 Launching ${type.toUpperCase()} job`, 'info');
 
   updateLiveBadge('running', 'En cours');
 
@@ -1461,14 +1720,14 @@ async function submitJob(type, payload, formOrBtn) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur de soumission');
 
-    showToast(`Job ${data.id} démarré avec succès !`, 'success');
-    appendTerminalLog(`✓ Job initialisé [ID: ${data.id}]`, 'info');
+    showToast(`Job ${data.id} started successfully!`, 'success');
+    appendTerminalLog(`✓ Job initialized [ID: ${data.id}]`, 'info');
     pollJobs();
     loadPrompts();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
-    appendTerminalLog(`❌ Échec : ${err.message}`, 'error');
-    updateLiveBadge('error', 'Échec');
+    appendTerminalLog(`❌ Failed: ${err.message}`, 'error');
+    updateLiveBadge('error', 'Failed');
   } finally {
     if (btn) {
       setTimeout(() => {
@@ -1527,25 +1786,25 @@ function updateLivePanel(latestJob) {
   const badge = document.getElementById('live-job-status-badge');
   const previewBox = document.getElementById('live-preview-box');
 
-  // Trouver en priorité un job en cours d'exécution dans toute la file
+  // Prioritize finding a running job in queue
   const runningJob = allJobs.find(j => j.status === 'RUNNING' || j.status === 'IN_PROGRESS' || j.status === 'IN_QUEUE');
   const activeOrLatest = runningJob || latestJob;
 
   if (!activeOrLatest) {
     lastRenderedPreviewKey = '';
     badge.className = 'badge';
-    badge.innerText = 'En veille';
+    badge.innerText = 'Idle';
     previewBox.innerHTML = `
       <div class="preview-placeholder">
         <div class="pulsing-circle"></div>
-        <p>Aucun job en cours d'exécution.</p>
-        <small>Lancez une génération depuis le panneau de gauche pour voir la progression et le résultat ici.</small>
+        <p>No jobs currently running.</p>
+        <small>Launch a generation from the left panel to see real-time progress and results here.</small>
       </div>
     `;
     return;
   }
 
-  // Update logs (sans toucher au lecteur média)
+  // Update logs without interrupting media playback
   if (activeOrLatest.logs && activeOrLatest.logs.length > 0) {
     const container = document.getElementById('live-logs-container');
     if (container) {
@@ -1558,16 +1817,16 @@ function updateLivePanel(latestJob) {
     lastRenderedPreviewKey = `${activeOrLatest.id}_running`;
     const rStatus = activeOrLatest.runpod_status || 'IN_PROGRESS';
     
-    let subStatusText = '⚡ Traitement en cours...';
-    let badgeLabel = `En cours : ${activeOrLatest.pipeline_type.toUpperCase()}`;
+    let subStatusText = '⚡ Processing...';
+    let badgeLabel = `Running: ${activeOrLatest.pipeline_type.toUpperCase()}`;
     let badgeClass = 'badge running';
 
     if (rStatus === 'IN_QUEUE') {
-      subStatusText = '⏳ En file d\'attente...';
-      badgeLabel = '⏳ File d\'attente';
+      subStatusText = '⏳ In queue...';
+      badgeLabel = '⏳ In Queue';
     } else if (rStatus === 'IN_PROGRESS') {
-      subStatusText = '⚡ Exécution en cours sur GPU...';
-      badgeLabel = '⚡ Rendu Actif';
+      subStatusText = '⚡ Processing on GPU...';
+      badgeLabel = '⚡ Active Render';
     }
 
     badge.className = badgeClass;
@@ -1575,24 +1834,30 @@ function updateLivePanel(latestJob) {
 
     const pipelineLabels = {
       txt2vid: '🎬 Text-to-Video',
-      img2vid: '🖼️ Animation Image-to-Video',
-      img2img: '🎨 Transformation Image-to-Image',
+      img2vid: '🖼️ Image-to-Video Animation',
+      img2img: '🎨 Image-to-Image Transformation',
       faceswap: '🎭 Face Swap (ReActor / InsightFace)',
-      vid2vid: '🎞️ Transformation Video-to-Video',
-      txt2img: '✨ Génération Image (Flux)',
-      enhance: '🧠 Optimisation Prompt (Qwen3)',
-      tts: '🎙️ Synthèse Vocale (Text-to-Speech)',
-      lora_train: '🎓 Entraînement LoRA Fine-Tuning'
+      vid2vid: '🎞️ Video-to-Video Transformation',
+      txt2img: '✨ Text-to-Image Generation (Flux)',
+      enhance: '🧠 Prompt Optimization (Qwen3)',
+      tts: '🎙️ Text-to-Speech Synthesis',
+      lora_train: '🎓 LoRA Fine-Tuning Training'
     };
 
     const label = pipelineLabels[activeOrLatest.pipeline_type] || activeOrLatest.pipeline_type.toUpperCase();
-    const promptText = activeOrLatest.prompt || activeOrLatest.source || 'Traitement du média...';
-    const runpodJobId = activeOrLatest.runpod_job_id || (activeOrLatest.pipeline_type === 'lora_train' ? 'Local RTX 2080' : 'Local / GPU');
-    const endpointName = activeOrLatest.runpod_endpoint || (activeOrLatest.pipeline_type === 'tts' || activeOrLatest.pipeline_type === 'lora_train' ? 'Local RTX 2080' : 'RunPod Serverless');
+    const promptText = activeOrLatest.prompt || activeOrLatest.source || 'Processing media...';
+    const isPodTask = activeOrLatest.pipeline_type === 'tts' || activeOrLatest.pipeline_type === 'lora_train';
+    const gpuTitle = (systemInfo && systemInfo.gpu_name) ? systemInfo.gpu_name : 'Pod GPU';
+    const runpodJobId = activeOrLatest.runpod_job_id || (isPodTask ? gpuTitle : 'RunPod Cloud');
+    const endpointName = activeOrLatest.runpod_endpoint || (isPodTask ? gpuTitle : 'RunPod Serverless');
 
     if (activeOrLatest.stage_info) {
       subStatusText = activeOrLatest.stage_info;
     }
+
+    const elapsedLabel = 'Elapsed Time';
+    const statusLabel = 'Status';
+    const engineLabel = 'Engine:';
 
     previewBox.innerHTML = `
       <div class="live-running-card">
@@ -1600,20 +1865,20 @@ function updateLivePanel(latestJob) {
         <div class="live-running-title">${label}</div>
         <div class="live-running-sub">${subStatusText}</div>
         <div class="live-running-meta-grid">
-          <div class="live-meta-pill"><span>Temps écoulé</span><strong>⏱️ ${activeOrLatest.elapsed_seconds || 0}s</strong></div>
-          <div class="live-meta-pill"><span>Statut</span><strong class="status-${rStatus.toLowerCase()}">${rStatus}</strong></div>
+          <div class="live-meta-pill"><span>${elapsedLabel}</span><strong>⏱️ ${activeOrLatest.elapsed_seconds || 0}s</strong></div>
+          <div class="live-meta-pill"><span>${statusLabel}</span><strong class="status-${rStatus.toLowerCase()}">${rStatus}</strong></div>
           <div class="live-meta-pill" style="grid-column: 1 / -1;"><span>Job ID :</span> <code>${runpodJobId}</code></div>
-          <div class="live-meta-pill" style="grid-column: 1 / -1;"><span>Moteur :</span> <code>${endpointName}</code></div>
+          <div class="live-meta-pill" style="grid-column: 1 / -1;"><span>${engineLabel}</span> <code>${endpointName}</code></div>
         </div>
         <div class="live-running-prompt">"${escapeHtml(promptText)}"</div>
       </div>
     `;
   } else if (activeOrLatest.status === 'COMPLETED') {
     badge.className = 'badge success';
-    badge.innerText = 'Terminé avec succès';
+    badge.innerText = 'Completed Successfully';
 
     const completedKey = `${activeOrLatest.id}_completed_${activeOrLatest.result_file || ''}`;
-    // CRITIQUE : Si ce média est DÉJÀ rendu, ne PAS réinitialiser le DOM toutes les 2.5s pour ne pas couper le son ou relancer en boucle !
+    // CRITICAL: If media is ALREADY rendered, do not reset DOM every 2.5s
     if (lastRenderedPreviewKey === completedKey) {
       return;
     }
@@ -1625,13 +1890,17 @@ function updateLivePanel(latestJob) {
       const isLora = activeOrLatest.pipeline_type === 'lora_train' || activeOrLatest.result_file.endsWith('.safetensors');
 
       if (isLora) {
+        const loraSuccessText = currentLang === 'fr' 
+          ? 'LoRA model trained successfully! Available immediately in generation forms.'
+          : 'LoRA model trained successfully! Available immediately in generation forms.';
+        const loraBtnText = '🎨 Use in Text-to-Image';
         previewBox.innerHTML = `
           <div class="audio-live-preview-card" style="border-color: rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05);">
             <div class="audio-pulse-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">🎓</div>
             <div class="audio-filename-display" style="font-size: 1.1rem; font-weight: 700; color: #fff;">${escapeHtml(activeOrLatest.result_file)}</div>
-            <p style="color: #94a3b8; font-size: 0.85rem; margin: 8px 0 16px;">Modèle LoRA entraîné avec succès sur votre RTX 2080 ! Disponible immédiatement dans vos formulaires de création.</p>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin: 8px 0 16px;">${loraSuccessText}</p>
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-              <button class="btn-primary btn-sm btn-glow" onclick="useTrainedLora('${escapeHtml(activeOrLatest.result_file)}')">🎨 Utiliser dans Text-to-Image</button>
+              <button class="btn-primary btn-sm btn-glow" onclick="useTrainedLora('${escapeHtml(activeOrLatest.result_file)}')">${loraBtnText}</button>
             </div>
           </div>
         `;
@@ -1644,29 +1913,29 @@ function updateLivePanel(latestJob) {
             <div class="audio-filename-display">${escapeHtml(activeOrLatest.result_file)}</div>
             <audio id="live-audio-player" src="/api/media/${encodeURIComponent(activeOrLatest.result_file)}" controls preload="auto" style="width: 100%; margin: 15px 0;"></audio>
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-              <button class="btn-secondary btn-sm" onclick="useAsTtsReference('${escapeHtml(activeOrLatest.result_file)}')">🎙️ Cloner cette voix (XTTS)</button>
-              <button class="btn-primary btn-sm" onclick="downloadMedia('${escapeHtml(activeOrLatest.result_file)}')">⬇️ Télécharger</button>
+              <button class="btn-secondary btn-sm" onclick="useAsTtsReference('${escapeHtml(activeOrLatest.result_file)}')">🎙️ Clone this voice (XTTS)</button>
+              <button class="btn-primary btn-sm" onclick="downloadMedia('${escapeHtml(activeOrLatest.result_file)}')">⬇️ Download</button>
             </div>
           </div>
         `;
-        // Jouer une seule fois au chargement du résultat
+        // Play once when result loads
         setTimeout(() => {
           const a = document.getElementById('live-audio-player');
           if (a) a.play().catch(() => {});
         }, 150);
       } else {
-        previewBox.innerHTML = `<img src="/api/media/${encodeURIComponent(activeOrLatest.result_file)}" alt="Résultat">`;
+        previewBox.innerHTML = `<img src="/api/media/${encodeURIComponent(activeOrLatest.result_file)}" alt="Result">`;
       }
     }
   } else if (activeOrLatest.status === 'FAILED') {
     lastRenderedPreviewKey = `${activeOrLatest.id}_failed`;
     badge.className = 'badge error';
-    badge.innerText = 'Échec du job';
+    badge.innerText = 'Job Failed';
     previewBox.innerHTML = `
       <div class="preview-placeholder">
         <div style="font-size: 2.5rem; margin-bottom: 8px;">❌</div>
-        <p style="color: var(--accent-red); font-weight: 600;">La génération a échoué</p>
-        <small>Consultez le terminal de logs ci-dessous pour voir le détail de l'erreur.</small>
+        <p style="color: var(--accent-red); font-weight: 600;">Generation failed</p>
+        <small>Check the terminal logs below for error details.</small>
       </div>
     `;
   }
@@ -1677,7 +1946,7 @@ function renderJobsList() {
   if (!container) return;
 
   if (allJobs.length === 0) {
-    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-dim);">Aucun job dans l'historique</div>`;
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-dim);">No jobs in history</div>`;
     return;
   }
 
@@ -1691,10 +1960,10 @@ function renderJobsList() {
             <span class="job-title">${job.pipeline_type.toUpperCase()}</span>
             <span class="badge ${statusClass}">${job.status}</span>
           </div>
-          <div class="job-prompt">${job.prompt || job.source || 'Aucun prompt'}</div>
-          <div class="job-meta">ID: ${job.id} • Durée: ${job.elapsed_seconds || 0}s • Sortie: ${job.result_file || 'N/A'}</div>
+          <div class="job-prompt">${job.prompt || job.source || 'No prompt'}</div>
+          <div class="job-meta">ID: ${job.id} • Duration: ${job.elapsed_seconds || 0}s • Output: ${job.result_file || 'N/A'}</div>
         </div>
-        ${job.result_file ? `<button class="btn-secondary btn-sm" onclick="openMediaModal('${job.result_file}')">👁️ Voir</button>` : ''}
+        ${job.result_file ? `<button class="btn-secondary btn-sm" onclick="openMediaModal('${job.result_file}')">👁️ View</button>` : ''}
       </div>
     `;
   }).join('');
@@ -1728,6 +1997,9 @@ async function loadSettings() {
     if (!res.ok) return;
     const settings = await res.json();
     if (settings.api_key) document.getElementById('setting-api-key').value = settings.api_key;
+    if (settings.hf_token && document.getElementById('setting-hf-token')) {
+      document.getElementById('setting-hf-token').value = settings.hf_token;
+    }
     if (settings.wan_endpoint) document.getElementById('setting-wan-endpoint').value = settings.wan_endpoint;
     if (settings.ltx_endpoint && document.getElementById('setting-ltx-endpoint')) document.getElementById('setting-ltx-endpoint').value = settings.ltx_endpoint;
     if (settings.minimax_endpoint && document.getElementById('setting-minimax-endpoint')) document.getElementById('setting-minimax-endpoint').value = settings.minimax_endpoint;
@@ -1749,6 +2021,7 @@ async function saveSettings(event) {
   event.preventDefault();
   const settings = {
     api_key: document.getElementById('setting-api-key').value.trim(),
+    hf_token: (document.getElementById('setting-hf-token') ? document.getElementById('setting-hf-token').value.trim() : ''),
     wan_endpoint: document.getElementById('setting-wan-endpoint').value.trim(),
     ltx_endpoint: (document.getElementById('setting-ltx-endpoint') ? document.getElementById('setting-ltx-endpoint').value.trim() : 'ltx-video-2-5'),
     minimax_endpoint: (document.getElementById('setting-minimax-endpoint') ? document.getElementById('setting-minimax-endpoint').value.trim() : 'minimax-h3'),
@@ -1764,13 +2037,130 @@ async function saveSettings(event) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
     });
-    if (!res.ok) throw new Error('Échec de la sauvegarde');
-    showToast('Paramètres sauvegardés avec succès !', 'success');
+    if (!res.ok) throw new Error('Failed to save settings');
+    showToast('Settings saved successfully!', 'success');
     fetchBalance(true);
+    checkModelsStatus();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
   }
 }
+
+// ----------------------------------------------------
+// Pod GPU Model Management & Local Weights
+// ----------------------------------------------------
+let modelsStatusCache = [];
+
+async function checkModelsStatus() {
+  try {
+    const res = await fetch('/api/models/status');
+    if (!res.ok) return;
+    const data = await res.json();
+    modelsStatusCache = data.models || [];
+    renderModelsStatus();
+    updateLtxBanners();
+  } catch (err) {
+    console.error('Failed to check models status:', err);
+  }
+}
+
+function renderModelsStatus() {
+  const ltx = modelsStatusCache.find(m => m.id === 'ltx-video');
+  if (!ltx) return;
+
+  const badge = document.getElementById('model-badge-ltx');
+  const pathEl = document.getElementById('model-path-ltx');
+  const btnDl = document.getElementById('btn-download-ltx');
+
+  if (badge && pathEl) {
+    if (ltx.installed) {
+      badge.className = 'status-badge installed';
+      badge.innerHTML = `🟢 Installed (${ltx.size_gb.toFixed(1)} GB)`;
+      pathEl.textContent = `📁 ${ltx.path}`;
+      if (btnDl) {
+        btnDl.innerHTML = `✅ Installed`;
+        btnDl.className = 'btn-secondary';
+        btnDl.disabled = true;
+      }
+    } else {
+      badge.className = 'status-badge missing';
+      badge.innerHTML = `🟡 Weights Missing`;
+      pathEl.textContent = `📁 ${ltx.path} (Not found)`;
+      if (btnDl) {
+        btnDl.innerHTML = `⬇️ Download (~11 GB)`;
+        btnDl.className = 'btn-primary';
+        btnDl.disabled = false;
+      }
+    }
+  }
+}
+
+function updateLtxBanners() {
+  const ltx = modelsStatusCache.find(m => m.id === 'ltx-video');
+  const t2vModel = document.getElementById('t2v-video-model')?.value;
+  const i2vModel = document.getElementById('i2v-video-model')?.value;
+
+  const renderBanner = (bannerEl, isLtxSelected) => {
+    if (!bannerEl) return;
+    if (!isLtxSelected) {
+      bannerEl.style.display = 'none';
+      return;
+    }
+    bannerEl.style.display = 'flex';
+    if (ltx && ltx.installed) {
+      bannerEl.className = 'model-status-card ready';
+      bannerEl.innerHTML = `
+        <div>
+          <strong>🟢 LTX-Video 2.5 :</strong>
+          <span>Ready on Pod GPU (${ltx.size_gb.toFixed(1)} GB local).</span>
+        </div>
+      `;
+    } else {
+      bannerEl.className = 'model-status-card missing';
+      bannerEl.innerHTML = `
+        <div style="flex:1;">
+          <strong>🟡 LTX-Video 2.5 :</strong>
+          <span>Model weights missing (~11 GB). Requires Hugging Face Token.</span>
+        </div>
+        <button type="button" class="btn-primary" onclick="downloadModel('ltx-video')" style="padding: 5px 12px; font-size: 0.78rem; white-space: nowrap;">
+          ⬇️ Download (~11 GB)
+        </button>
+      `;
+    }
+  };
+
+  renderBanner(document.getElementById('t2v-ltx-banner'), t2vModel === 'ltx-2-5');
+  renderBanner(document.getElementById('i2v-ltx-banner'), i2vModel === 'ltx-2-5');
+}
+
+async function downloadModel(modelId = 'ltx-video') {
+  const hfToken = document.getElementById('setting-hf-token')?.value.trim();
+  if (!hfToken) {
+    showToast('⚠️ Please configure your Hugging Face Token in Settings first.', 'warning');
+    switchTab('settings');
+    document.getElementById('setting-hf-token')?.focus();
+    return;
+  }
+
+  showToast('Starting download of model weights in background...', 'info');
+
+  try {
+    const res = await fetch('/api/models/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_id: modelId })
+    });
+    const data = await res.json();
+    if (data.job_id) {
+      showToast(`Download job started (${data.job_id}). Tracking in Jobs tab.`, 'success');
+      switchTab('jobs');
+      fetchJobs();
+    }
+  } catch (err) {
+    showToast(`Erreur : ${err.message}`, 'error');
+  }
+}
+
 
 // ----------------------------------------------------
 // Account & Balance Management
@@ -1801,29 +2191,29 @@ async function fetchBalance(showToastOnManual = false) {
       const formattedBalance = Number(rawBalance).toFixed(2);
 
       if (sidebarBalance) sidebarBalance.innerText = `${formattedBalance} $`;
-      if (sidebarEmail) sidebarEmail.innerText = data.email || 'RunPod Connecté';
+      if (sidebarEmail) sidebarEmail.innerText = data.email || 'RunPod Connected';
       if (sidebarDot) {
         sidebarDot.className = 'status-dot online';
       }
 
       if (settingsBalance) settingsBalance.innerText = `${formattedBalance}`;
-      if (settingsEmail) settingsEmail.innerText = data.email || 'Compte RunPod Actif';
-      if (settingsId) settingsId.innerText = data.id || 'Connecté';
+      if (settingsEmail) settingsEmail.innerText = data.email || 'RunPod Account Active';
+      if (settingsId) settingsId.innerText = data.id || 'Connected';
       if (settingsStatus) {
-        settingsStatus.innerHTML = '<span class="status-dot online"></span> Clé API Valide';
+        settingsStatus.innerHTML = '<span class="status-dot online"></span> Valid API Key';
       }
       if (settingsTime) {
         const now = new Date();
-        settingsTime.innerText = `Actualisé à ${now.toLocaleTimeString()}`;
+        settingsTime.innerText = `Updated at ${now.toLocaleTimeString()}`;
       }
 
       if (showToastOnManual) {
-        showToast(`Solde actualisé : ${formattedBalance} $ USD`, 'success');
+        showToast(`Balance updated: ${formattedBalance} $ USD`, 'success');
       }
     } else {
-      const errMsg = data.error || 'Impossible de récupérer le solde';
+      const errMsg = data.error || 'Unable to retrieve balance';
       if (sidebarBalance) sidebarBalance.innerText = 'Err $';
-      if (sidebarEmail) sidebarEmail.innerText = 'Clé invalide / non configurée';
+      if (sidebarEmail) sidebarEmail.innerText = 'Invalid / unconfigured API key';
       if (sidebarDot) {
         sidebarDot.className = 'status-dot offline';
       }
@@ -1831,17 +2221,17 @@ async function fetchBalance(showToastOnManual = false) {
       if (settingsBalance) settingsBalance.innerText = '--';
       if (settingsEmail) settingsEmail.innerText = errMsg;
       if (settingsStatus) {
-        settingsStatus.innerHTML = '<span class="status-dot offline"></span> Erreur Clé API';
+        settingsStatus.innerHTML = '<span class="status-dot offline"></span> API Key Error';
       }
 
       if (showToastOnManual) {
-        showToast(`Erreur solde : ${errMsg}`, 'error');
+        showToast(`Balance error: ${errMsg}`, 'error');
       }
     }
   } catch (err) {
     console.error('Erreur fetchBalance:', err);
     if (showToastOnManual) {
-      showToast(`Erreur réseau : ${err.message}`, 'error');
+      showToast(`Network error: ${err.message}`, 'error');
     }
   } finally {
     setTimeout(() => {
@@ -1924,12 +2314,12 @@ function renderPromptsList() {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--text-dim);">Aucun prompt trouvé</div>`;
+    container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--text-dim);">No prompts found</div>`;
     return;
   }
 
   container.innerHTML = filtered.map(p => {
-    const dateStr = p.created_at ? new Date(p.created_at * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    const dateStr = p.created_at ? new Date(p.created_at * 1000).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : '';
     const starClass = p.is_favorite ? 'active' : '';
 
     return `
@@ -1938,16 +2328,16 @@ function renderPromptsList() {
           <span class="prompt-tag">${p.pipeline_type}</span>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="prompt-date">${dateStr}</span>
-            <button class="btn-star-favorite ${starClass}" title="Favori" onclick="toggleFavoritePrompt('${p.id}')">⭐</button>
+            <button class="btn-star-favorite ${starClass}" title="Favorite" onclick="toggleFavoritePrompt('${p.id}')">⭐</button>
           </div>
         </div>
         <div class="prompt-card-body">${escapeHtml(p.text)}</div>
         <div class="prompt-card-footer">
           <div class="prompt-card-actions">
-            <button class="btn-primary btn-sm" title="Utiliser dans le studio" onclick="usePromptInStudio('${escapeJsStr(p.text)}', '${p.pipeline_type}')">⚡ Utiliser</button>
-            <button class="btn-secondary btn-sm" title="Copier" onclick="copyPromptText('${escapeJsStr(p.text)}')">📋 Copier</button>
+            <button class="btn-primary btn-sm" title="Use in Studio" onclick="usePromptInStudio('${escapeJsStr(p.text)}', '${p.pipeline_type}')">⚡ Use</button>
+            <button class="btn-secondary btn-sm" title="Copy" onclick="copyPromptText('${escapeJsStr(p.text)}')">📋 Copy</button>
           </div>
-          <button class="btn-danger btn-sm" title="Supprimer" onclick="deletePrompt('${p.id}')">🗑️</button>
+          <button class="btn-danger btn-sm" title="Delete" onclick="deletePrompt('${p.id}')">🗑️</button>
         </div>
       </div>
     `;
@@ -1969,10 +2359,10 @@ async function toggleFavoritePrompt(id) {
 }
 
 async function deletePrompt(id) {
-  if (!confirm('Supprimer ce prompt de votre historique ?')) return;
+  if (!confirm('Delete this prompt from history?')) return;
   try {
     await fetch(`/api/prompts/${id}`, { method: 'DELETE' });
-    showToast('Prompt supprimé', 'info');
+    showToast('Prompt deleted', 'info');
     await loadPrompts();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
@@ -1981,9 +2371,9 @@ async function deletePrompt(id) {
 
 function copyPromptText(text) {
   navigator.clipboard.writeText(text).then(() => {
-    showToast('Prompt copié dans le presse-papier !', 'success');
+    showToast('Prompt copied to clipboard!', 'success');
   }).catch(() => {
-    showToast('Impossible de copier', 'error');
+    showToast('Failed to copy', 'error');
   });
 }
 
@@ -2018,7 +2408,7 @@ function usePromptInStudio(text, category) {
     el.value = text;
     el.focus();
   }
-  showToast(`Prompt inséré dans le module ${targetPipeline.toUpperCase()} !`, 'success');
+  showToast(`Prompt inserted into ${targetPipeline.toUpperCase()} module!`, 'success');
 }
 
 // Prompt Quick Selector Modal for Textareas
@@ -2050,7 +2440,7 @@ function renderSelectorPrompts() {
   const filtered = allPrompts.filter(p => !searchQuery || p.text.toLowerCase().includes(searchQuery));
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-dim);">Aucun prompt dans l'historique</div>`;
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-dim);">No prompt dans l'historique</div>`;
     return;
   }
 
@@ -2061,7 +2451,7 @@ function renderSelectorPrompts() {
           <span class="prompt-tag" style="margin-right: 8px;">${p.pipeline_type}</span>
           ${escapeHtml(p.text)}
         </div>
-        <button class="btn-primary btn-sm">Insérer</button>
+        <button class="btn-primary btn-sm">Insert</button>
       </div>
     `;
   }).join('');
@@ -2076,7 +2466,7 @@ function selectPromptForInput(text) {
     }
   }
   closePromptSelectorModal();
-  showToast('Prompt inséré avec succès !', 'success');
+  showToast('Prompt inserted successfully!', 'success');
 }
 
 // Add New Prompt Modal
@@ -2102,9 +2492,9 @@ async function submitNewPrompt(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, pipeline_type: category }),
     });
-    if (!res.ok) throw new Error('Erreur lors de l’enregistrement');
+    if (!res.ok) throw new Error('Error saving prompt');
     closeNewPromptModal();
-    showToast('Prompt ajouté à la bibliothèque !', 'success');
+    showToast('Prompt added to library!', 'success');
     await loadPrompts();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
@@ -2131,7 +2521,7 @@ function toggleMaskSection(enabled) {
   if (enabled) {
     const imgPath = document.getElementById('i2i-image-path')?.value.trim();
     if (!imgPath) {
-      showToast('Sélectionnez d\'abord une image source avant de dessiner un masque', 'info');
+      showToast('Select a source image first before drawing a mask', 'info');
     }
   }
 }
@@ -2165,7 +2555,7 @@ function setMaskTool(tool) {
 function openMaskModal() {
   const imgPath = document.getElementById('i2i-image-path')?.value.trim();
   if (!imgPath) {
-    return showToast('Veuillez d\'abord choisir ou uploader une image source', 'error');
+    return showToast('Please choose or upload a source image first', 'error');
   }
 
   const modal = document.getElementById('mask-modal');
@@ -2402,7 +2792,7 @@ function saveMaskAndClose() {
   expCtx.putImageData(expImgData, 0, 0);
 
   if (!hasMaskedPixels) {
-    showToast('Aucune zone n\'a été masquée. Masque réinitialisé.', 'info');
+    showToast('No area was masked. Mask reset.', 'info');
     clearCurrentMask();
     closeMaskModal();
     return;
@@ -2414,7 +2804,7 @@ function saveMaskAndClose() {
 
   if (inputEl) inputEl.value = maskDataUrl;
   if (previewEl) {
-    previewEl.innerHTML = `<img src="${maskDataUrl}" alt="Masque Inpaint" style="background:#000;">`;
+    previewEl.innerHTML = `<img src="${maskDataUrl}" alt="Inpainting Mask" style="background:#000;">`;
   }
 
   const checkbox = document.getElementById('i2i-enable-mask');
@@ -2422,15 +2812,15 @@ function saveMaskAndClose() {
   toggleMaskSection(true);
 
   closeMaskModal();
-  showToast('✓ Masque enregistré avec succès pour Inpainting !', 'success');
+  showToast('✓ Mask saved successfully for Inpainting!', 'success');
 }
 
 function clearCurrentMask() {
   const inputEl = document.getElementById('i2i-mask-data');
   const previewEl = document.getElementById('i2i-mask-preview');
   if (inputEl) inputEl.value = '';
-  if (previewEl) previewEl.innerHTML = `<span class="mask-placeholder-text">Aucun tracé</span>`;
-  showToast('Masque effacé', 'info');
+  if (previewEl) previewEl.innerHTML = `<span class="mask-placeholder-text">No mask drawn</span>`;
+  showToast('Mask cleared', 'info');
 }
 
 // ----------------------------------------------------
@@ -2455,8 +2845,8 @@ function clearControlNetRef(prefix) {
   const input = document.getElementById(`${prefix}-controlnet-path`);
   const preview = document.getElementById(`${prefix}-controlnet-preview`);
   if (input) input.value = '';
-  if (preview) preview.innerHTML = '<div class="empty-state-selector"><span>🖼️ Image guide personnalisée (ou laisser vide)</span></div>';
-  showToast('Référence ControlNet effacée', 'info');
+  if (preview) preview.innerHTML = '<div class="empty-state-selector"><span>🖼️ Custom guide image (or leave empty)</span></div>';
+  showToast('ControlNet reference cleared', 'info');
 }
 
 async function loadLoras() {
@@ -2467,7 +2857,7 @@ async function loadLoras() {
     const dropdowns = document.querySelectorAll('.lora-select-dropdown');
     dropdowns.forEach(dd => {
       const currentVal = dd.value;
-      let html = '<option value="">Aucun (Modèle pur)</option>';
+      let html = '<option value="">None (Pure model)</option>';
       if (Array.isArray(loras) && loras.length > 0) {
         loras.forEach(l => {
           html += `<option value="${l.path}">${l.filename} (${l.size_mb} MB)</option>`;
@@ -2488,55 +2878,83 @@ window.clearControlNetRef = clearControlNetRef;
 window.loadLoras = loadLoras;
 
 // ----------------------------------------------------
-// Wi-Fi Mobile Modal
+// RunPod Mobile Modal
 // ----------------------------------------------------
-async function openWifiModal() {
-  const modal = document.getElementById('wifi-modal');
+let currentMobileUrl = '';
+
+async function openMobileModal() {
+  const modal = document.getElementById('mobile-modal') || document.getElementById('wifi-modal');
   if (!modal) return;
   modal.classList.add('active');
 
-  const linkEl = document.getElementById('wifi-url-link');
-  const qrImg = document.getElementById('wifi-qr-img');
+  const linkEl = document.getElementById('mobile-url-link') || document.getElementById('wifi-url-link');
+  const qrImg = document.getElementById('mobile-qr-img') || document.getElementById('wifi-qr-img');
+  const openLink = document.getElementById('mobile-open-link');
 
+  let resolvedUrl = '';
+
+  // 1. Check if already connected via RunPod proxy or external domain
+  if (window.location.hostname.includes('runpod.net') || (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'))) {
+    resolvedUrl = window.location.origin;
+  }
+
+  // 2. Query backend for RUNPOD_POD_ID proxy URL or LAN IP
   try {
     const res = await fetch('/api/network');
     if (res.ok) {
       const data = await res.json();
-      const mobileUrl = data.mobile_url || `http://${window.location.hostname}:3000`;
-      if (linkEl) {
-        linkEl.href = mobileUrl;
-        linkEl.innerText = mobileUrl;
+      if (data.is_runpod && data.mobile_url) {
+        resolvedUrl = data.mobile_url;
+      } else if (!resolvedUrl && data.mobile_url) {
+        resolvedUrl = data.mobile_url;
       }
-      if (qrImg) {
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileUrl)}`;
-      }
-    } else {
-      fallbackWifiUrl();
     }
   } catch (e) {
-    fallbackWifiUrl();
+    console.warn('Network info error:', e);
   }
 
-  function fallbackWifiUrl() {
-    const host = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '10.0.0.18' : window.location.hostname;
-    const url = `http://${host}:${window.location.port || 3000}`;
-    if (linkEl) {
-      linkEl.href = url;
-      linkEl.innerText = url;
-    }
-    if (qrImg) {
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
-    }
+  if (!resolvedUrl) {
+    resolvedUrl = window.location.origin;
+  }
+
+  currentMobileUrl = resolvedUrl;
+
+  if (linkEl) {
+    linkEl.href = resolvedUrl;
+    linkEl.innerText = resolvedUrl;
+  }
+  if (openLink) {
+    openLink.href = resolvedUrl;
+  }
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(resolvedUrl)}`;
   }
 }
 
-function closeWifiModal() {
-  const modal = document.getElementById('wifi-modal');
+function closeMobileModal() {
+  const modal = document.getElementById('mobile-modal') || document.getElementById('wifi-modal');
   if (modal) modal.classList.remove('active');
 }
 
-window.openWifiModal = openWifiModal;
-window.closeWifiModal = closeWifiModal;
+function copyMobileUrl() {
+  if (!currentMobileUrl) return;
+  const copyBtnText = document.getElementById('btn-copy-url-text');
+  navigator.clipboard.writeText(currentMobileUrl).then(() => {
+    if (copyBtnText) copyBtnText.textContent = '✅ Copied!';
+    setTimeout(() => {
+      if (copyBtnText) copyBtnText.textContent = '📋 Copy URL';
+    }, 2000);
+  }).catch(() => {
+    alert(currentMobileUrl);
+  });
+}
+
+window.openMobileModal = openMobileModal;
+window.closeMobileModal = closeMobileModal;
+window.copyMobileUrl = copyMobileUrl;
+// Backward compatibility
+window.openWifiModal = openMobileModal;
+window.closeWifiModal = closeMobileModal;
 
 // ----------------------------------------------------
 // LoRA Training Studio Functions
@@ -2572,9 +2990,9 @@ async function loadLoraDatasets(targetSelectName = null) {
     const select = document.getElementById('lora-dataset-select');
     if (!select) return;
 
-    let html = '<option value="__new__">➕ Nouveau Dataset...</option>';
+    let html = '<option value="__new__">➕ New Dataset...</option>';
     cachedLoraDatasets.forEach(ds => {
-      html += `<option value="${escapeHtml(ds.name)}">📁 ${escapeHtml(ds.name)} (${ds.image_count} photos)</option>`;
+      html += `<option value="${escapeHtml(ds.name)}">📁 ${escapeHtml(ds.name)} (${ds.image_count} images)</option>`;
     });
     select.innerHTML = html;
 
@@ -2620,7 +3038,7 @@ function renderDatasetImages(dataset) {
     container.innerHTML = `
       <div class="empty-dataset-hint">
         <span>🖼️</span>
-        <p>Aucune photo dans ce dataset pour le moment. Déposez vos photos ci-dessus pour commencer.</p>
+        <p>No photos in this dataset yet. Drop your photos above to get started.</p>
       </div>
     `;
     return;
@@ -2631,7 +3049,7 @@ function renderDatasetImages(dataset) {
       <img class="dataset-image-thumb" src="${img.path}" alt="${escapeHtml(img.name)}" loading="lazy">
       <div class="dataset-image-body">
         <span class="dataset-image-name" title="${escapeHtml(img.name)}">${escapeHtml(img.name)}</span>
-        <textarea class="dataset-image-caption-input" placeholder="Légende d'entraînement..." 
+        <textarea class="dataset-image-caption-input" placeholder="Training caption..." 
           onchange="saveDatasetCaption('${escapeHtml(dataset.name)}', '${escapeHtml(img.name)}', this.value)"
         >${escapeHtml(img.caption || '')}</textarea>
       </div>
@@ -2660,7 +3078,7 @@ async function uploadLoraFilesList(files) {
     }
   }
 
-  showToast(`Téléversement de ${files.length} photos vers '${datasetName}'...`, 'info');
+  showToast(`Uploading ${files.length} photos to '${datasetName}'...`, 'info');
   const formData = new FormData();
   for (let i = 0; i < files.length; i++) {
     formData.append(`file_${i}`, files[i]);
@@ -2672,9 +3090,9 @@ async function uploadLoraFilesList(files) {
       body: formData,
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Échec du téléversement');
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-    showToast(`✓ ${data.uploaded_count} photos ajoutées au dataset '${datasetName}' !`, 'success');
+    showToast(`✓ ${data.uploaded_count} photos added to dataset '${datasetName}'!`, 'success');
     await loadLoraDatasets(datasetName);
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
@@ -2690,14 +3108,14 @@ async function triggerAutoCaption() {
 
   const datasetName = select?.value;
   if (!datasetName || datasetName === '__new__') {
-    return showToast('Veuillez d\'abord téléverser des images dans votre dataset.', 'warn');
+    return showToast('Please upload images to your dataset first.', 'warn');
   }
 
   const trigger = triggerInput?.value.trim() || 'sks person';
   const category = catSelect?.value || 'general';
 
   if (btn) btn.disabled = true;
-  if (btnText) btnText.innerHTML = '🪄 Légendage en cours...';
+  if (btnText) btnText.innerHTML = '🪄 Auto-captioning in progress...';
 
   try {
     const res = await fetch('/api/lora/autocaption', {
@@ -2711,15 +3129,15 @@ async function triggerAutoCaption() {
       }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur lors du légendage');
+    if (!res.ok) throw new Error(data.error || 'Error during captioning');
 
-    showToast(`✓ ${data.count} photos légendées avec le mot-clé '${trigger}' !`, 'success');
+    showToast(`✓ ${data.count} photos captioned with trigger word '${trigger}'!`, 'success');
     await loadLoraDatasets(datasetName);
   } catch (err) {
     showToast(`Erreur auto-caption : ${err.message}`, 'error');
   } finally {
     if (btn) btn.disabled = false;
-    if (btnText) btnText.innerHTML = '🪄 Auto-Légender avec l\'IA';
+    if (btnText) btnText.innerHTML = '🪄 Auto-Caption with AI';
   }
 }
 
@@ -2735,7 +3153,7 @@ async function saveDatasetCaption(datasetName, imageName, caption) {
       }),
     });
   } catch (err) {
-    console.warn('Erreur sauvegarde légende:', err);
+    console.warn('Error saving caption:', err);
   }
 }
 
@@ -2748,12 +3166,12 @@ async function handleLoraTrainSubmit(e) {
   const select = document.getElementById('lora-dataset-select');
   const datasetName = select?.value;
   if (!datasetName || datasetName === '__new__') {
-    return showToast('Veuillez sélectionner un dataset contenant des photos pour démarrer l\'entraînement.', 'error');
+    return showToast('Please select a dataset containing photos to start training.', 'error');
   }
 
   const currentDs = cachedLoraDatasets.find(ds => ds.name === datasetName);
   if (!currentDs || currentDs.image_count === 0) {
-    return showToast('Ce dataset ne contient aucune image. Veuillez téléverser des photos avant d\'entraîner.', 'error');
+    return showToast('This dataset contains no images. Please upload photos before training.', 'error');
   }
 
   const outputName = document.getElementById('lora-output-name')?.value.trim() || `${datasetName}.safetensors`;
@@ -2777,7 +3195,7 @@ async function handleLoraTrainSubmit(e) {
   const btn = document.getElementById('btn-submit-lora-train');
   const btnText = document.getElementById('lora-train-submit-text');
   if (btn) btn.disabled = true;
-  if (btnText) btnText.innerHTML = '⚡ Entraînement LoRA en cours...';
+  if (btnText) btnText.innerHTML = '⚡ LoRA training in progress...';
 
   try {
     const res = await fetch('/api/lora/train', {
@@ -2786,24 +3204,24 @@ async function handleLoraTrainSubmit(e) {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur lors du démarrage');
+    if (!res.ok) throw new Error(data.error || 'Error starting training');
 
-    showToast(`🚀 Entraînement LoRA démarré ! (Job ${data.id})`, 'success');
-    appendTerminalLog(`🚀 Démarrage de l'entraînement LoRA : ${outputName} (${steps} steps)`, 'info');
+    showToast(`🚀 LoRA training started! (Job ${data.id})`, 'success');
+    appendTerminalLog(`🚀 Starting LoRA training: ${outputName} (${steps} steps)`, 'info');
     pollJobs();
   } catch (err) {
     showToast(`Erreur : ${err.message}`, 'error');
   } finally {
     setTimeout(() => {
       if (btn) btn.disabled = false;
-      if (btnText) btnText.innerHTML = '🚀 Lancer l\'Entraînement LoRA';
+      if (btnText) btnText.innerHTML = '🚀 Launch LoRA Training';
     }, 2000);
   }
 }
 
 function useTrainedLora(safetensorsFile) {
   switchPipeline('txt2img');
-  // Sélectionner dans le dropdown LoRA
+  // Select in LoRA dropdown
   const dropdown = document.querySelector('#form-txt2img .lora-select-dropdown');
   if (dropdown) {
     for (let i = 0; i < dropdown.options.length; i++) {
@@ -2813,7 +3231,7 @@ function useTrainedLora(safetensorsFile) {
       }
     }
   }
-  showToast(`LoRA '${safetensorsFile}' sélectionné pour la génération Text-to-Image !`, 'success');
+  showToast(`LoRA '${safetensorsFile}' selected for Text-to-Image generation!`, 'success');
 }
 
 window.handleLoraDatasetChange = handleLoraDatasetChange;

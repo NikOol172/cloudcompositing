@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RunPod Studio ⚡ Studio & Gestionnaire de Médias</title>
+  <title>RunPod Studio ⚡ Media & AI Creative Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -17,53 +17,60 @@
         <div class="logo-icon">⚡</div>
         <div class="brand-text">
           <h1>RunPod Studio</h1>
-          <span class="version-badge">v1.2 Studio</span>
+          <div class="brand-badges">
+            <span class="version-badge">v1.2 Studio</span>
+
+          </div>
         </div>
       </div>
 
       <nav class="nav-menu">
         <button class="nav-item active" data-tab="studio">
           <span class="icon">🎨</span>
-          <span>Studio Génération</span>
+          <span data-i18n="nav_studio">AI Generation Studio</span>
         </button>
         <button class="nav-item" data-tab="gallery">
           <span class="icon">📁</span>
-          <span>Médias & Galerie</span>
+          <span data-i18n="nav_gallery">Media & Gallery</span>
           <span class="counter-badge" id="media-count">0</span>
         </button>
         <button class="nav-item" data-tab="prompts">
           <span class="icon">📜</span>
-          <span>Historique Prompts</span>
+          <span data-i18n="nav_prompts">Prompt History</span>
           <span class="counter-badge" id="prompts-count">0</span>
         </button>
         <button class="nav-item" data-tab="jobs">
           <span class="icon">⏳</span>
-          <span>File & Historique</span>
+          <span data-i18n="nav_jobs">Queue & Jobs</span>
           <span class="counter-badge active-jobs-badge" id="active-jobs-count" style="display:none;">0</span>
         </button>
         <button class="nav-item" data-tab="settings">
           <span class="icon">⚙️</span>
-          <span>Paramètres & API</span>
+          <span data-i18n="nav_settings">Settings & API</span>
         </button>
       </nav>
 
       <div class="sidebar-footer">
         <div class="sidebar-account-box" id="sidebar-account-box">
           <div class="account-header-row">
-            <div class="balance-pill" id="sidebar-balance-pill" title="Solde actuel RunPod">
+            <div class="balance-pill" id="sidebar-balance-pill" title="RunPod Account Balance">
               <span class="balance-icon">💳</span>
               <span class="balance-amount" id="sidebar-balance-val">-- $</span>
             </div>
-            <button type="button" class="btn-balance-refresh" id="btn-refresh-balance" title="Actualiser le solde" onclick="fetchBalance(true)">
+            <button type="button" class="btn-balance-refresh" id="btn-refresh-balance" title="Refresh Balance" onclick="fetchBalance(true)">
               <span class="refresh-icon">🔄</span>
             </button>
           </div>
           <div class="account-meta-row">
             <span class="status-dot online" id="sidebar-status-dot"></span>
-            <span class="account-email-label" id="sidebar-account-email" title="Compte RunPod">Chargement...</span>
+            <span class="account-email-label" id="sidebar-account-email" title="RunPod Account">Loading...</span>
           </div>
-          <button type="button" class="btn-sidebar-wifi" onclick="openWifiModal()" title="Ouvrir sur mobile via Wi-Fi">
-            <span>📱 Accès Mobile Wi-Fi</span>
+          <div class="gpu-status-badge" id="sidebar-gpu-badge">
+            <span class="gpu-icon">⚡</span>
+            <span id="sidebar-gpu-text" data-i18n="gpu_detecting">Detecting hardware...</span>
+          </div>
+          <button type="button" class="btn-sidebar-wifi" onclick="openMobileModal()" title="Mobile Pod Access">
+            <span data-i18n="btn_mobile_access">📱 Mobile Pod Access</span>
           </button>
         </div>
       </div>
@@ -78,8 +85,9 @@
           <span class="mobile-brand-title">RunPod Studio</span>
         </div>
         <div class="mobile-header-actions">
-          <button type="button" class="btn-wifi-badge" onclick="openWifiModal()" title="Accès Wi-Fi Mobile">
-            <span>📶 Wi-Fi</span>
+          
+          <button type="button" class="btn-wifi-badge" onclick="openMobileModal()" title="Mobile Pod Access">
+            <span data-i18n="btn_mobile_badge">📱 Pod Mobile</span>
           </button>
           <span class="mobile-balance-pill" id="mobile-balance-pill" onclick="switchTab('settings')">-- $</span>
         </div>
@@ -89,19 +97,19 @@
       <section id="tab-studio" class="tab-pane active">
         <div class="section-header">
           <div>
-            <h2>Studio de Création IA</h2>
-            <p class="subtitle">Générez, animez, transformez et personnalisez vos visuels en haute définition.</p>
+            <h2 data-i18n="studio_title">AI Creative Studio</h2>
+            <p class="subtitle" data-i18n="studio_subtitle">Generate, animate, transform, and customize your visual assets in high definition.</p>
           </div>
           <div class="pipeline-switcher">
-            <button class="pill-btn active" data-pipeline="txt2vid">🎬 Text-to-Video</button>
-            <button class="pill-btn" data-pipeline="img2vid">🖼️ Image-to-Video</button>
-            <button class="pill-btn" data-pipeline="img2img">🎨 Image-to-Image</button>
-            <button class="pill-btn" data-pipeline="faceswap">🎭 Face Swap</button>
-            <button class="pill-btn" data-pipeline="vid2vid">🎞️ Video-to-Video</button>
-            <button class="pill-btn" data-pipeline="txt2img">✨ Text-to-Image</button>
-            <button class="pill-btn" data-pipeline="tts">🎙️ Text-to-Speech</button>
-            <button class="pill-btn" data-pipeline="lora-train">🎓 Entraînement LoRA</button>
-            <button class="pill-btn" data-pipeline="enhance">🧠 Prompt Enhancer</button>
+            <button class="pill-btn active" data-pipeline="txt2vid" data-i18n="pipe_txt2vid">🎬 Text-to-Video</button>
+            <button class="pill-btn" data-pipeline="img2vid" data-i18n="pipe_img2vid">🖼️ Image-to-Video</button>
+            <button class="pill-btn" data-pipeline="img2img" data-i18n="pipe_img2img">🎨 Image-to-Image</button>
+            <button class="pill-btn" data-pipeline="faceswap" data-i18n="pipe_faceswap">🎭 Face Swap</button>
+            <button class="pill-btn" data-pipeline="vid2vid" data-i18n="pipe_vid2vid">🎞️ Video-to-Video</button>
+            <button class="pill-btn" data-pipeline="txt2img" data-i18n="pipe_txt2img">✨ Text-to-Image</button>
+            <button class="pill-btn" data-pipeline="tts" data-i18n="pipe_tts">🎙️ Text-to-Speech</button>
+            <button class="pill-btn" data-pipeline="lora-train" data-i18n="pipe_lora">🎓 LoRA Training</button>
+            <button class="pill-btn" data-pipeline="enhance" data-i18n="pipe_enhance">🧠 Prompt Enhancer</button>
           </div>
         </div>
 
@@ -112,168 +120,172 @@
             <form id="form-txt2vid" class="pipeline-form active">
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="t2v-prompt">Prompt de la scène</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('t2v-prompt')">📜 Historique</button>
+                  <label for="t2v-prompt" data-i18n="label_prompt">Scene Prompt</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('t2v-prompt')" data-i18n="btn_history">📜 History</button>
                 </div>
                 <div class="textarea-wrapper">
-                  <textarea id="t2v-prompt" rows="4" placeholder="Ex: An elegant woman in casual dress and stylish pink knee-high compression support socks, walking gracefully toward modern airport..."></textarea>
-                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('t2v-prompt')">🧠 Optimiser</button>
+                  <textarea id="t2v-prompt" rows="4" placeholder="e.g. An elegant woman in casual dress and stylish pink knee-high compression support socks, walking gracefully toward modern airport..."></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Optimize Prompt" onclick="enhanceCurrentPrompt('t2v-prompt')" data-i18n="btn_enhance">🧠 Optimize</button>
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="t2v-video-model">Moteur Vidéo</label>
+                  <label for="t2v-video-model" data-i18n="video_engine">Video Engine</label>
                   <select id="t2v-video-model">
-                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Fluide / HD)</option>
-                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-rapide / DiT)</option>
+                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Smooth / HD)</option>
+                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-fast / DiT)</option>
                     <option value="minimax-h3">🌊 MiniMax-H3 (Hailuo 3 / 2K & Audio)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="t2v-mode">Moteur Image Initiale</label>
+                  <label for="t2v-mode" data-i18n="initial_img_engine">Initial Image Engine</label>
                   <select id="t2v-mode">
-                    <option value="cloud" selected>🚀 RunPod Flux (Cloud)</option>
-                    <option value="local">💻 Local GPU (RTX 2080)</option>
+                    <option value="cloud" selected data-i18n="engine_cloud">🚀 RunPod Cloud (Flux 1 Schnell)</option>
+                    <option value="local" id="t2v-local-opt" data-i18n="engine_local">⚡ Pod GPU / Local</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="t2v-resolution">Résolution</label>
+                  <label for="t2v-resolution" data-i18n="resolution">Resolution</label>
                   <select id="t2v-resolution">
-                    <option value="720p" selected>720p (Haute Qualité HD)</option>
-                    <option value="480p">480p (Rendu Rapide)</option>
+                    <option value="720p" selected data-i18n="res_hd">720p (High Quality HD)</option>
+                    <option value="480p" data-i18n="res_fast">480p (Fast Render)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="t2v-duration">Durée (secondes)</label>
+                  <label for="t2v-duration" data-i18n="duration">Duration (seconds)</label>
                   <select id="t2v-duration">
-                    <option value="5" selected>5 secondes</option>
-                    <option value="10">10 secondes</option>
+                    <option value="5" selected>5 seconds</option>
+                    <option value="10">10 seconds</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="t2v-format">Format Image</label>
+                  <label for="t2v-format" data-i18n="aspect_ratio">Aspect Ratio</label>
                   <select id="t2v-format">
-                    <option value="768x1344" selected>Portrait 9:16 (Mobile / Reels)</option>
-                    <option value="1344x768">Paysage 16:9 (Cinéma)</option>
-                    <option value="1024x1024">Carré 1:1 (Instagram)</option>
+                    <option value="768x1344" selected data-i18n="ratio_portrait">Portrait 9:16 (Mobile / Reels)</option>
+                    <option value="1344x768" data-i18n="ratio_landscape">Landscape 16:9 (Cinema)</option>
+                    <option value="1024x1024" data-i18n="ratio_square">Square 1:1 (Instagram)</option>
                   </select>
                 </div>
               </div>
+
+              <div id="t2v-ltx-banner" class="model-status-card" style="display:none;"></div>
 
               <div class="form-group">
                 <label class="checkbox-label">
                   <input type="checkbox" id="t2v-enhance-prompt">
-                  <span>Activer l'enrichissement automatique de prompt (Qwen3-32B)</span>
+                  <span data-i18n="chk_enhance_qwen">Enable automatic prompt enhancement (Qwen3-32B)</span>
                 </label>
               </div>
 
               <div class="form-group">
-                <label for="t2v-output-video">Nom du fichier de sortie</label>
-                <input type="text" id="t2v-output-video" value="studio_video.mp4" placeholder="ex: mon_animation.mp4">
+                <label for="t2v-output-video" data-i18n="output_filename">Output Filename</label>
+                <input type="text" id="t2v-output-video" value="studio_video.mp4" placeholder="e.g. my_animation.mp4">
               </div>
 
               <button type="submit" class="btn-primary btn-glow">
-                <span>🚀 Lancer Text-to-Video</span>
+                <span data-i18n="btn_launch_t2v">🚀 Generate Text-to-Video</span>
               </button>
             </form>
 
             <!-- Form for img2vid -->
             <form id="form-img2vid" class="pipeline-form">
               <div class="form-group">
-                <label>Image Source</label>
+                <label>Source Image</label>
                 <div class="media-selector-box" id="i2v-source-preview">
                   <div class="empty-state-selector">
-                    <span>🖼️ Glissez une image ici ou cliquez pour choisir dans la galerie</span>
+                    <span>🖼️ Drag and drop an image here or click to choose from gallery</span>
                   </div>
                 </div>
                 <input type="hidden" id="i2v-image-path">
                 <div class="selector-actions">
-                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2v-image-path', 'i2v-source-preview', 'image')">Galerie</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2v-image-path', 'i2v-source-preview', 'image')">Gallery</button>
                   <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('i2v-image-path', 'i2v-source-preview', 'image')">Upload</button>
-                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('i2v-image-path')">✂️ Recadrer</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('i2v-image-path')">✂️ Crop</button>
                 </div>
               </div>
 
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="i2v-prompt">Prompt d'animation de mouvement</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('i2v-prompt')">📜 Historique</button>
+                  <label for="i2v-prompt">Motion Animation Prompt</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('i2v-prompt')">📜 History</button>
                 </div>
                 <div class="textarea-wrapper">
-                  <textarea id="i2v-prompt" rows="3" placeholder="Ex: Smooth cinematic camera pan following her walk, natural movement, golden hour window light, 60fps"></textarea>
-                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('i2v-prompt')">🧠 Optimiser</button>
+                  <textarea id="i2v-prompt" rows="3" placeholder="e.g. Smooth cinematic camera pan following her walk, natural movement, golden hour window light, 60fps"></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Optimize Prompt" onclick="enhanceCurrentPrompt('i2v-prompt')">🧠 Optimize</button>
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="i2v-video-model">Moteur Vidéo</label>
+                  <label for="i2v-video-model">Video Engine</label>
                   <select id="i2v-video-model">
-                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Fluide / HD)</option>
-                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-rapide / DiT)</option>
+                    <option value="wan-2-5" selected>🎬 Wan 2.5 (Smooth / HD)</option>
+                    <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-fast / DiT)</option>
                     <option value="minimax-h3">🌊 MiniMax-H3 (Hailuo 3 / 2K & Audio)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="i2v-resolution">Résolution</label>
+                  <label for="i2v-resolution">Resolution</label>
                   <select id="i2v-resolution">
-                    <option value="720p" selected>720p (Recommandé)</option>
+                    <option value="720p" selected>720p (Recommended)</option>
                     <option value="480p">480p</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="i2v-duration">Durée</label>
+                  <label for="i2v-duration">Duration</label>
                   <select id="i2v-duration">
-                    <option value="5" selected>5 secondes</option>
-                    <option value="10">10 secondes</option>
+                    <option value="5" selected>5 seconds</option>
+                    <option value="10">10 seconds</option>
                   </select>
                 </div>
               </div>
 
+              <div id="i2v-ltx-banner" class="model-status-card" style="display:none;"></div>
+
               <div class="form-group">
-                <label for="i2v-output">Nom du fichier vidéo</label>
+                <label for="i2v-output">Output Video Filename</label>
                 <input type="text" id="i2v-output" value="animation_image.mp4">
               </div>
 
               <button type="submit" class="btn-primary btn-glow">
-                <span>🚀 Animer en Vidéo</span>
+                <span>🚀 Generate Image-to-Video</span>
               </button>
             </form>
 
             <!-- Form for img2img -->
             <form id="form-img2img" class="pipeline-form">
               <div class="form-group">
-                <label>Image Source de Référence (ex: Bas de compression)</label>
+                <label>Reference Source Image</label>
                 <div class="media-selector-box" id="i2i-source-preview">
                   <div class="empty-state-selector">
-                    <span>🖼️ Glissez une image ici ou cliquez pour choisir dans la galerie</span>
+                    <span>🖼️ Drag and drop an image here or click to choose from gallery</span>
                   </div>
                 </div>
                 <input type="hidden" id="i2i-image-path">
                 <div class="selector-actions">
-                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2i-image-path', 'i2i-source-preview', 'image')">Galerie</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2i-image-path', 'i2i-source-preview', 'image')">Gallery</button>
                   <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('i2i-image-path', 'i2i-source-preview', 'image')">Upload</button>
-                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('i2i-image-path')">✂️ Recadrer</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('i2i-image-path')">✂️ Crop</button>
                 </div>
               </div>
 
               <div class="form-group inpaint-mask-section">
                 <div class="form-label-row">
-                  <label>🖌️ Masque de Retouche (Inpainting Optionnel)</label>
+                  <label>🖌️ Inpainting Mask (Optional)</label>
                   <div class="checkbox-row" style="margin-bottom:0;">
                     <input type="checkbox" id="i2i-enable-mask" onchange="toggleMaskSection(this.checked)">
-                    <label for="i2i-enable-mask" style="font-size:0.85rem; cursor:pointer;">Activer le masque</label>
+                    <label for="i2i-enable-mask" style="font-size:0.85rem; cursor:pointer;">Enable mask</label>
                   </div>
                 </div>
                 <div id="i2i-mask-controls" style="display:none; margin-top:8px;">
                   <div class="mask-preview-row">
                     <div class="mask-preview-thumb" id="i2i-mask-preview">
-                      <span class="mask-placeholder-text">Aucun tracé</span>
+                      <span class="mask-placeholder-text">No mask drawn</span>
                     </div>
                     <div class="mask-actions-buttons">
-                      <button type="button" class="btn-secondary btn-sm" onclick="openMaskModal()">🖌️ Dessiner / Modifier</button>
-                      <button type="button" class="btn-secondary btn-sm" onclick="clearCurrentMask()">🗑️ Effacer</button>
+                      <button type="button" class="btn-secondary btn-sm" onclick="openMaskModal()">🖌️ Draw / Edit</button>
+                      <button type="button" class="btn-secondary btn-sm" onclick="clearCurrentMask()">🗑️ Clear</button>
                     </div>
                   </div>
                   <input type="hidden" id="i2i-mask-data">
@@ -282,29 +294,29 @@
 
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="i2i-prompt">Prompt de transformation / nouvelle scène</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('i2i-prompt')">📜 Historique</button>
+                  <label for="i2i-prompt">Transformation Prompt / New Scene</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('i2i-prompt')">📜 History</button>
                 </div>
                 <div class="textarea-wrapper">
-                  <textarea id="i2i-prompt" rows="3" placeholder="Ex: An athletic female pickleball player wearing the pink compression socks, holding a paddle on outdoor sunny court, 8k uhd photorealistic"></textarea>
-                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('i2i-prompt')">🧠 Optimiser</button>
+                  <textarea id="i2i-prompt" rows="3" placeholder="e.g. An athletic female pickleball player wearing the pink compression socks, holding a paddle on outdoor sunny court, 8k uhd photorealistic"></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Optimize Prompt" onclick="enhanceCurrentPrompt('i2i-prompt')">🧠 Optimize</button>
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="i2i-strength">Force de transformation (Denoise) : <span id="i2i-strength-val">0.70</span></label>
+                  <label for="i2i-strength" data-i18n="label_denoise">Transformation Strength (Denoise): <span id="i2i-strength-val">0.70</span></label>
                   <input type="range" id="i2i-strength" min="0.1" max="1.0" step="0.05" value="0.70" oninput="document.getElementById('i2i-strength-val').innerText = this.value">
                 </div>
                 <div class="form-group col">
-                  <label for="i2i-mode">Moteur de Génération</label>
+                  <label for="i2i-mode" data-i18n="gen_engine">Generation Engine</label>
                   <select id="i2i-mode" onchange="toggleI2iMode()">
-                    <option value="cloud" selected>🚀 RunPod Cloud (Flux 1 Schnell)</option>
-                    <option value="local">💻 Local GPU / Diffusers (RTX 2080 / CPU)</option>
+                    <option value="cloud" selected data-i18n="engine_cloud">🚀 RunPod Cloud (Flux 1 Schnell)</option>
+                    <option value="local" id="i2i-local-opt" data-i18n="engine_local">⚡ Pod GPU / Local (Diffusers)</option>
                   </select>
                 </div>
                 <div class="form-group col" id="i2i-local-model-group" style="display: none;">
-                  <label for="i2i-local-model">Modèle Local (HuggingFace)</label>
+                  <label for="i2i-local-model" data-i18n="label_local_model">Local Model (HuggingFace)</label>
                   <select id="i2i-local-model">
                     <option value="stabilityai/sdxl-turbo" selected>SDXL Turbo (1-4 steps)</option>
                     <option value="ByteDance/SDXL-Lightning">SDXL Lightning (4-8 steps)</option>
@@ -318,15 +330,15 @@
                 <div class="form-group col">
                   <label for="i2i-format">Dimensions</label>
                   <select id="i2i-format">
-                    <option value="auto" selected>Conserver ratio d'origine (Auto)</option>
-                    <option value="1024x1024">Carré (1024 x 1024)</option>
+                    <option value="auto" selected>Keep original ratio (Auto)</option>
+                    <option value="1024x1024">Square (1024 x 1024)</option>
                     <option value="768x1344">Portrait 9:16 (768 x 1344)</option>
-                    <option value="1344x768">Paysage 16:9 (1344 x 768)</option>
-                    <option value="512x512">Rapide 512x512 (Idéal Turbo)</option>
+                    <option value="1344x768">Landscape 16:9 (1344 x 768)</option>
+                    <option value="512x512">Fast 512x512 (Best for Turbo)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="i2i-steps">Pas d'inférence (Steps)</label>
+                  <label for="i2i-steps">Inference Steps</label>
                   <input type="number" id="i2i-steps" value="4" min="1" max="50">
                 </div>
               </div>
@@ -334,19 +346,19 @@
               <!-- LoRA Section (Image-to-Image) -->
               <div class="collapsible-card" id="i2i-lora-card">
                 <div class="collapsible-header" onclick="toggleCollapsible('i2i-lora-body', 'i2i-lora-icon')">
-                  <span>🎨 Stylisation LoRA <span class="lora-badge">Optionnel</span></span>
+                  <span>🎨 LoRA Styling <span class="lora-badge">Optional</span></span>
                   <span class="collapsible-icon collapsed" id="i2i-lora-icon">▾</span>
                 </div>
                 <div class="collapsible-body collapsed" id="i2i-lora-body">
                   <div class="form-row">
                     <div class="form-group col">
-                      <label for="i2i-lora-select">Modèle LoRA (Dossier <code>loras/</code>)</label>
+                      <label for="i2i-lora-select">LoRA Model (Folder <code>loras/</code>)</label>
                       <select id="i2i-lora-select" class="lora-select-dropdown">
-                        <option value="" selected>Aucun (Modèle pur)</option>
+                        <option value="" selected>None (Pure model)</option>
                       </select>
                     </div>
                     <div class="form-group col">
-                      <label for="i2i-lora-scale">Poids du LoRA : <span id="i2i-lora-scale-val">0.80x</span></label>
+                      <label for="i2i-lora-scale">LoRA Weight: <span id="i2i-lora-scale-val">0.80x</span></label>
                       <input type="range" id="i2i-lora-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('i2i-lora-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
                     </div>
                   </div>
@@ -356,40 +368,40 @@
               <!-- ControlNet Section (Image-to-Image) -->
               <div class="collapsible-card" id="i2i-controlnet-card">
                 <div class="collapsible-header" onclick="toggleCollapsible('i2i-controlnet-body', 'i2i-controlnet-icon')">
-                  <span>🎯 Guidage Spatial ControlNet <span class="controlnet-badge">SDXL</span></span>
+                  <span>🎯 Spatial ControlNet Guidance <span class="controlnet-badge">SDXL</span></span>
                   <span class="collapsible-icon collapsed" id="i2i-controlnet-icon">▾</span>
                 </div>
                 <div class="collapsible-body collapsed" id="i2i-controlnet-body">
                   <div class="form-group">
                     <label class="checkbox-label">
                       <input type="checkbox" id="i2i-controlnet-enable" onchange="toggleControlNetVisibility('i2i')">
-                      <span>Activer le guidage géométrique ControlNet</span>
+                      <span>Enable geometric ControlNet guidance</span>
                     </label>
                   </div>
                   <div id="i2i-controlnet-fields" style="display: none;">
                     <div class="form-row">
                       <div class="form-group col">
-                        <label for="i2i-controlnet-type">Type de Contrôle</label>
+                        <label for="i2i-controlnet-type">Control Type</label>
                         <select id="i2i-controlnet-type">
-                          <option value="canny" selected>📐 Contours Précis (Canny Edges)</option>
-                          <option value="depth">🌐 Carte de Profondeur (Depth Map)</option>
+                          <option value="canny" selected>📐 Precise Contours (Canny Edges)</option>
+                          <option value="depth">🌐 Depth Map</option>
                         </select>
                       </div>
                       <div class="form-group col">
-                        <label for="i2i-controlnet-scale">Force du Guidage : <span id="i2i-controlnet-scale-val">0.80x</span></label>
+                        <label for="i2i-controlnet-scale">Guidance Strength: <span id="i2i-controlnet-scale-val">0.80x</span></label>
                         <input type="range" id="i2i-controlnet-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('i2i-controlnet-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
                       </div>
                     </div>
                     <div class="form-group">
-                      <label>Image de guidage (Laissez vide pour utiliser l'image source)</label>
+                      <label>Guidance Image (Leave empty to use source image)</label>
                       <div class="media-selector-box square" id="i2i-controlnet-preview" onclick="if(!document.getElementById('i2i-controlnet-path').value) openMediaPicker('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">
-                        <div class="empty-state-selector"><span>🖼️ Image guide personnalisée (ou laisser vide)</span></div>
+                        <div class="empty-state-selector"><span>🖼️ Custom guide image (or leave empty)</span></div>
                       </div>
                       <input type="hidden" id="i2i-controlnet-path">
                       <div class="selector-actions">
-                        <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">Galerie</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">Gallery</button>
                         <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('i2i-controlnet-path', 'i2i-controlnet-preview', 'image')">Upload</button>
-                        <button type="button" class="btn-secondary btn-sm" onclick="clearControlNetRef('i2i')">Effacer</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="clearControlNetRef('i2i')">Clear</button>
                       </div>
                     </div>
                   </div>
@@ -397,12 +409,12 @@
               </div>
 
               <div class="form-group">
-                <label for="i2i-output">Nom du fichier image résultat</label>
+                <label for="i2i-output">Output Image Filename</label>
                 <input type="text" id="i2i-output" value="pickleball_player.png">
               </div>
 
               <button type="submit" class="btn-primary btn-glow">
-                <span id="i2i-submit-text">🎨 Transformer l'Image (Image-to-Image)</span>
+                <span id="i2i-submit-text">🎨 Generate Image-to-Image</span>
               </button>
             </form>
 
@@ -410,28 +422,28 @@
             <form id="form-faceswap" class="pipeline-form">
               <div class="form-row">
                 <div class="form-group col">
-                  <label>1. Visage Source (Photo)</label>
+                  <label>1. Source Face (Photo)</label>
                   <div class="media-selector-box square" id="fs-source-preview" onclick="if(!document.getElementById('fs-source-path').value) openMediaPicker('fs-source-path', 'fs-source-preview', 'image')">
-                    <div class="empty-state-selector"><span>👤 Choisir visage</span></div>
+                    <div class="empty-state-selector"><span>👤 Choose face</span></div>
                   </div>
                   <input type="hidden" id="fs-source-path">
                   <div class="selector-actions">
-                    <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('fs-source-path', 'fs-source-preview', 'image')">Galerie</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('fs-source-path', 'fs-source-preview', 'image')">Gallery</button>
                     <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('fs-source-path', 'fs-source-preview', 'image')">Upload</button>
-                    <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('fs-source-path')">✂️ Recadrer</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('fs-source-path')">✂️ Crop</button>
                   </div>
                 </div>
 
                 <div class="form-group col">
-                  <label>2. Média Cible (Image ou Vidéo)</label>
+                  <label>2. Target Media (Image or Video)</label>
                   <div class="media-selector-box square" id="fs-target-preview" onclick="if(!document.getElementById('fs-target-path').value) openMediaPicker('fs-target-path', 'fs-target-preview', 'all')">
-                    <div class="empty-state-selector"><span>🎯 Choisir cible</span></div>
+                    <div class="empty-state-selector"><span>🎯 Choose target</span></div>
                   </div>
                   <input type="hidden" id="fs-target-path">
                   <div class="selector-actions">
-                    <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('fs-target-path', 'fs-target-preview', 'all')">Galerie</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('fs-target-path', 'fs-target-preview', 'all')">Gallery</button>
                     <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('fs-target-path', 'fs-target-preview', 'all')">Upload</button>
-                    <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('fs-target-path')">✂️ Recadrer</button>
+                    <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('fs-target-path')">✂️ Crop</button>
                   </div>
                 </div>
               </div>
@@ -440,51 +452,51 @@
                 <div class="form-group col">
                   <label class="checkbox-label" style="margin-top: 15px;">
                     <input type="checkbox" id="fs-restore-face" checked>
-                    <span>Restauration HD du visage (GFPGAN / CodeFormer)</span>
+                    <span>HD Face Restoration (GFPGAN / CodeFormer)</span>
                   </label>
                 </div>
                 <div class="form-group col">
-                  <label for="fs-face-index">Index du visage</label>
+                  <label for="fs-face-index">Face Index</label>
                   <input type="number" id="fs-face-index" value="0" min="0" max="10">
                 </div>
               </div>
 
               <div class="form-group">
-                <label for="fs-output">Nom du fichier de sortie</label>
+                <label for="fs-output">Output Filename</label>
                 <input type="text" id="fs-output" value="output_faceswap.mp4">
               </div>
 
               <button type="submit" class="btn-primary btn-glow">
-                <span>🎭 Appliquer le Face Swap</span>
+                <span>🎭 Apply Face Swap</span>
               </button>
             </form>
 
             <!-- Form for vid2vid -->
             <form id="form-vid2vid" class="pipeline-form">
               <div class="form-group">
-                <label>Vidéo Source</label>
+                <label>Source Video</label>
                 <div class="media-selector-box" id="v2v-source-preview" onclick="if(!document.getElementById('v2v-video-path').value) openMediaPicker('v2v-video-path', 'v2v-source-preview', 'video')">
-                  <div class="empty-state-selector"><span>🎞️ Glissez une vidéo ou choisissez depuis la galerie</span></div>
+                  <div class="empty-state-selector"><span>🎞️ Drag a video or choose from gallery</span></div>
                 </div>
                 <input type="hidden" id="v2v-video-path">
                 <div class="selector-actions">
-                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('v2v-video-path', 'v2v-source-preview', 'video')">Galerie</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('v2v-video-path', 'v2v-source-preview', 'video')">Gallery</button>
                   <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('v2v-video-path', 'v2v-source-preview', 'video')">Upload</button>
-                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('v2v-video-path')">✂️ Recadrer</button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="cropCurrentField('v2v-video-path')">✂️ Crop</button>
                 </div>
               </div>
 
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="v2v-prompt">Prompt de restyling / transformation</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('v2v-prompt')">📜 Historique</button>
+                  <label for="v2v-prompt">Restyling / Transformation Prompt</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('v2v-prompt')">📜 History</button>
                 </div>
-                <textarea id="v2v-prompt" rows="3" placeholder="Ex: Anime style watercolor animation, vibrant colors, gentle movement"></textarea>
+                <textarea id="v2v-prompt" rows="3" placeholder="e.g. Anime style watercolor animation, vibrant colors, gentle movement"></textarea>
               </div>
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="v2v-video-model">Moteur Vidéo</label>
+                  <label for="v2v-video-model">Video Engine</label>
                   <select id="v2v-video-model">
                     <option value="wan-2-5" selected>🎬 Wan 2.5 (Fluide / HD)</option>
                     <option value="ltx-2-5">⚡ LTX-Video 2.5 (Ultra-rapide / DiT)</option>
@@ -492,11 +504,11 @@
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="v2v-strength">Force de transformation : <span id="v2v-strength-val">0.65</span></label>
+                  <label for="v2v-strength">Transformation Strength: <span id="v2v-strength-val">0.65</span></label>
                   <input type="range" id="v2v-strength" min="0.1" max="1.0" step="0.05" value="0.65" oninput="document.getElementById('v2v-strength-val').innerText = this.value">
                 </div>
                 <div class="form-group col">
-                  <label for="v2v-resolution">Résolution</label>
+                  <label for="v2v-resolution">Resolution</label>
                   <select id="v2v-resolution">
                     <option value="720p" selected>720p</option>
                     <option value="480p">480p</option>
@@ -505,12 +517,12 @@
               </div>
 
               <div class="form-group">
-                <label for="v2v-output">Nom du fichier de sortie</label>
+                <label for="v2v-output">Output Filename</label>
                 <input type="text" id="v2v-output" value="output_vid2vid.mp4">
               </div>
 
               <button type="submit" class="btn-primary btn-glow">
-                <span>🎞️ Restyler la Vidéo (Vid2Vid)</span>
+                <span>🎞️ Generate Video-to-Video</span>
               </button>
             </form>
 
@@ -518,27 +530,27 @@
             <form id="form-txt2img" class="pipeline-form">
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="t2i-prompt">Prompt pour l'image</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('t2i-prompt')">📜 Historique</button>
+                  <label for="t2i-prompt" data-i18n="label_t2i_prompt">Image Description Prompt</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('t2i-prompt')" data-i18n="btn_history">📜 History</button>
                 </div>
                 <div class="textarea-wrapper">
-                  <textarea id="t2i-prompt" rows="4" placeholder="Ex: Close up portrait of an elegant woman relaxing in modern lounge, warm sunlight, 8k uhd photorealistic"></textarea>
-                  <button type="button" class="btn-enhance-inline" title="Enrichir ce prompt" onclick="enhanceCurrentPrompt('t2i-prompt')">🧠 Optimiser</button>
+                  <textarea id="t2i-prompt" rows="4" placeholder="e.g. Close up portrait of an elegant woman relaxing in modern lounge, warm sunlight, 8k uhd photorealistic"></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Optimize Prompt" onclick="enhanceCurrentPrompt('t2i-prompt')" data-i18n="btn_enhance">🧠 Optimize</button>
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="t2i-mode">Moteur de Génération</label>
+                  <label for="t2i-mode" data-i18n="gen_engine">Generation Engine</label>
                   <select id="t2i-mode" onchange="toggleT2iMode()">
-                    <option value="cloud" selected>🚀 RunPod Cloud (Flux 1 Schnell)</option>
-                    <option value="local">💻 Local GPU / Diffusers (RTX 2080 / CPU)</option>
+                    <option value="cloud" selected data-i18n="engine_cloud">🚀 RunPod Cloud (Flux 1 Schnell)</option>
+                    <option value="local" id="t2i-local-opt" data-i18n="engine_local">⚡ Pod GPU / Local (Diffusers)</option>
                   </select>
                 </div>
                 <div class="form-group col" id="t2i-local-model-group" style="display: none;">
-                  <label for="t2i-local-model">Modèle Local (HuggingFace / Diffusers)</label>
+                  <label for="t2i-local-model" data-i18n="label_local_model">Local Model (HuggingFace / Diffusers)</label>
                   <select id="t2i-local-model">
-                    <option value="stabilityai/sdxl-turbo" selected>SDXL Turbo (1-4 steps, ultra-rapide)</option>
+                    <option value="stabilityai/sdxl-turbo" selected>SDXL Turbo (1-4 steps, ultra-fast)</option>
                     <option value="ByteDance/SDXL-Lightning">SDXL Lightning (4-8 steps, HD)</option>
                     <option value="runwayml/stable-diffusion-v1-5">Stable Diffusion 1.5</option>
                     <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL Base 1.0</option>
@@ -550,14 +562,14 @@
                 <div class="form-group col">
                   <label for="t2i-format">Dimensions</label>
                   <select id="t2i-format">
-                    <option value="1024x1024" selected>Carré (1024 x 1024)</option>
+                    <option value="1024x1024" selected>Square (1024 x 1024)</option>
                     <option value="768x1344">Portrait 9:16 (768 x 1344)</option>
-                    <option value="1344x768">Paysage 16:9 (1344 x 768)</option>
-                    <option value="512x512">Rapide 512x512 (Idéal Turbo)</option>
+                    <option value="1344x768">Landscape 16:9 (1344 x 768)</option>
+                    <option value="512x512">Fast 512x512 (Best for Turbo)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="t2i-steps">Pas d'inférence (Steps)</label>
+                  <label for="t2i-steps">Inference Steps</label>
                   <input type="number" id="t2i-steps" value="4" min="1" max="50">
                 </div>
               </div>
@@ -565,19 +577,19 @@
               <!-- LoRA Section (Text-to-Image) -->
               <div class="collapsible-card" id="t2i-lora-card">
                 <div class="collapsible-header" onclick="toggleCollapsible('t2i-lora-body', 't2i-lora-icon')">
-                  <span>🎨 Stylisation LoRA <span class="lora-badge">Optionnel</span></span>
+                  <span>🎨 LoRA Styling <span class="lora-badge">Optional</span></span>
                   <span class="collapsible-icon collapsed" id="t2i-lora-icon">▾</span>
                 </div>
                 <div class="collapsible-body collapsed" id="t2i-lora-body">
                   <div class="form-row">
                     <div class="form-group col">
-                      <label for="t2i-lora-select">Modèle LoRA (Dossier <code>loras/</code>)</label>
+                      <label for="t2i-lora-select">LoRA Model (Folder <code>loras/</code>)</label>
                       <select id="t2i-lora-select" class="lora-select-dropdown">
-                        <option value="" selected>Aucun (Modèle pur)</option>
+                        <option value="" selected>None (Pure model)</option>
                       </select>
                     </div>
                     <div class="form-group col">
-                      <label for="t2i-lora-scale">Poids du LoRA : <span id="t2i-lora-scale-val">0.80x</span></label>
+                      <label for="t2i-lora-scale">LoRA Weight: <span id="t2i-lora-scale-val">0.80x</span></label>
                       <input type="range" id="t2i-lora-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('t2i-lora-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
                     </div>
                   </div>
@@ -587,40 +599,40 @@
               <!-- ControlNet Section (Text-to-Image) -->
               <div class="collapsible-card" id="t2i-controlnet-card">
                 <div class="collapsible-header" onclick="toggleCollapsible('t2i-controlnet-body', 't2i-controlnet-icon')">
-                  <span>🎯 Guidage Spatial ControlNet <span class="controlnet-badge">SDXL</span></span>
+                  <span>🎯 Spatial ControlNet Guidance <span class="controlnet-badge">SDXL</span></span>
                   <span class="collapsible-icon collapsed" id="t2i-controlnet-icon">▾</span>
                 </div>
                 <div class="collapsible-body collapsed" id="t2i-controlnet-body">
                   <div class="form-group">
                     <label class="checkbox-label">
                       <input type="checkbox" id="t2i-controlnet-enable" onchange="toggleControlNetVisibility('t2i')">
-                      <span>Activer le guidage géométrique ControlNet</span>
+                      <span>Enable geometric ControlNet guidance</span>
                     </label>
                   </div>
                   <div id="t2i-controlnet-fields" style="display: none;">
                     <div class="form-row">
                       <div class="form-group col">
-                        <label for="t2i-controlnet-type">Type de Contrôle</label>
+                        <label for="t2i-controlnet-type">Control Type</label>
                         <select id="t2i-controlnet-type">
-                          <option value="canny" selected>📐 Contours Précis (Canny Edges)</option>
-                          <option value="depth">🌐 Carte de Profondeur (Depth Map)</option>
+                          <option value="canny" selected>📐 Precise Contours (Canny Edges)</option>
+                          <option value="depth">🌐 Depth Map</option>
                         </select>
                       </div>
                       <div class="form-group col">
-                        <label for="t2i-controlnet-scale">Force du Guidage : <span id="t2i-controlnet-scale-val">0.80x</span></label>
+                        <label for="t2i-controlnet-scale">Guidance Strength: <span id="t2i-controlnet-scale-val">0.80x</span></label>
                         <input type="range" id="t2i-controlnet-scale" min="0.1" max="1.5" step="0.05" value="0.80" oninput="document.getElementById('t2i-controlnet-scale-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
                       </div>
                     </div>
                     <div class="form-group">
-                      <label>Image Source de Guidage (Contours / Profondeur)</label>
+                      <label>Guidance Source Image (Contours / Depth)</label>
                       <div class="media-selector-box square" id="t2i-controlnet-preview" onclick="if(!document.getElementById('t2i-controlnet-path').value) openMediaPicker('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">
-                        <div class="empty-state-selector"><span>🖼️ Choisir l'image guide</span></div>
+                        <div class="empty-state-selector"><span>🖼️ Choose guide image</span></div>
                       </div>
                       <input type="hidden" id="t2i-controlnet-path">
                       <div class="selector-actions">
-                        <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">Galerie</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="openMediaPicker('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">Gallery</button>
                         <button type="button" class="btn-secondary btn-sm" onclick="triggerDirectUpload('t2i-controlnet-path', 't2i-controlnet-preview', 'image')">Upload</button>
-                        <button type="button" class="btn-secondary btn-sm" onclick="clearControlNetRef('t2i')">Effacer</button>
+                        <button type="button" class="btn-secondary btn-sm" onclick="clearControlNetRef('t2i')">Clear</button>
                       </div>
                     </div>
                   </div>
@@ -628,12 +640,12 @@
               </div>
 
               <div class="form-group">
-                <label for="t2i-output">Nom du fichier image</label>
+                <label for="t2i-output">Output Filename</label>
                 <input type="text" id="t2i-output" value="flux_image.png">
               </div>
 
               <button type="submit" class="btn-primary btn-glow">
-                <span id="t2i-submit-text">✨ Générer l'Image</span>
+                <span id="t2i-submit-text">✨ Generate Image</span>
               </button>
             </form>
 
@@ -641,17 +653,17 @@
             <form id="form-enhance" class="pipeline-form">
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="enh-prompt">Prompt brut à enrichir</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('enh-prompt')">📜 Historique</button>
+                  <label for="enh-prompt">Raw Prompt to Enhance</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('enh-prompt')">📜 History</button>
                 </div>
-                <textarea id="enh-prompt" rows="3" placeholder="Ex: a woman wearing black compression socks in an airplane"></textarea>
+                <textarea id="enh-prompt" rows="3" placeholder="e.g. a woman wearing black compression socks in an airplane"></textarea>
               </div>
               <button type="submit" class="btn-primary btn-glow">
-                <span>🧠 Enrichir le Prompt</span>
+                <span>🧠 Enhance Prompt</span>
               </button>
               <div class="form-group" style="margin-top: 20px;">
-                <label>Résultat enrichi :</label>
-                <div class="enhanced-result-box" id="enh-result">Le prompt optimisé apparaîtra ici...</div>
+                <label>Enhanced Result:</label>
+                <div class="enhanced-result-box" id="enh-result">The optimized prompt will appear here...</div>
               </div>
             </form>
 
@@ -659,70 +671,70 @@
             <form id="form-tts" class="pipeline-form" onsubmit="handleTtsSubmit(event); return false;">
               <div class="form-group">
                 <div class="form-label-row">
-                  <label for="tts-text">Texte à synthétiser / Réplique vocale</label>
-                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('tts-text')">📜 Historique</button>
+                  <label for="tts-text" data-i18n="label_tts_text">Speech Text / Dialogue Script</label>
+                  <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('tts-text')" data-i18n="btn_history">📜 History</button>
                 </div>
                 <div class="textarea-wrapper">
-                  <textarea id="tts-text" rows="4" placeholder="Ex: Bonjour et bienvenue dans notre studio de création ! La synthèse vocale en local sur RTX 2080 est d'une fluidité remarquable."></textarea>
-                  <button type="button" class="btn-enhance-inline" title="Enrichir ce texte" onclick="enhanceCurrentPrompt('tts-text')">🧠 Optimiser</button>
+                  <textarea id="tts-text" rows="4" placeholder="e.g. Welcome to RunPod Studio! Experience ultra-fast text-to-speech and voice cloning powered by Kokoro and XTTS."></textarea>
+                  <button type="button" class="btn-enhance-inline" title="Optimize Prompt" onclick="enhanceCurrentPrompt('tts-text')" data-i18n="btn_enhance">🧠 Optimize</button>
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="tts-engine">Moteur de Synthèse</label>
+                  <label for="tts-engine">Speech Synthesis Engine</label>
                   <select id="tts-engine" onchange="handleTtsEngineChange()">
-                    <option value="kokoro" selected>⚡ Kokoro-82M (Ultra-rapide & Naturel)</option>
-                    <option value="xtts">🎭 Coqui XTTS-v2 (Clonage vocal haute fidélité)</option>
+                    <option value="kokoro" selected>⚡ Kokoro-82M (Ultra-fast & Natural)</option>
+                    <option value="xtts">🎭 Coqui XTTS-v2 (High-Fidelity Voice Cloning)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="tts-language">Langue</label>
+                  <label for="tts-language">Language</label>
                   <select id="tts-language" onchange="handleTtsLanguageChange()">
-                    <option value="fr" selected>🇫🇷 Français</option>
-                    <option value="en">🇬🇧 / 🇺🇸 Anglais</option>
-                    <option value="es">🇪🇸 Espagnol</option>
-                    <option value="de">🇩🇪 Allemand</option>
-                    <option value="it">🇮🇹 Italien</option>
-                    <option value="pt">🇵🇹 Portugais</option>
-                    <option value="ja">🇯🇵 Japonais</option>
-                    <option value="zh">🇨🇳 Chinois</option>
+                    <option value="en" selected>🇬🇧 / 🇺🇸 English</option>
+                    <option value="fr">🇫🇷 French</option>
+                    <option value="es">🇪🇸 Spanish</option>
+                    <option value="de">🇩🇪 German</option>
+                    <option value="it">🇮🇹 Italian</option>
+                    <option value="pt">🇵🇹 Portuguese</option>
+                    <option value="ja">🇯🇵 Japanese</option>
+                    <option value="zh">🇨🇳 Chinese</option>
                   </select>
                 </div>
               </div>
 
               <div class="form-row" id="tts-voice-row">
                 <div class="form-group col">
-                  <label for="tts-voice">Voix Prédéfinie</label>
+                  <label for="tts-voice">Preset Voice</label>
                   <select id="tts-voice">
-                    <!-- Options mises à jour dynamiquement selon la langue -->
-                    <option value="ff_siwis" selected>ff_siwis (Française - Naturelle)</option>
-                    <option value="af_bella">af_bella (Anglaise US - Chaleureuse)</option>
-                    <option value="af_sarah">af_sarah (Anglaise US - Calme)</option>
-                    <option value="am_adam">am_adam (Anglaise US - Homme grave)</option>
-                    <option value="am_michael">am_michael (Anglaise US - Homme dynamique)</option>
-                    <option value="bf_emma">bf_emma (Anglaise UK - Distinguée)</option>
-                    <option value="bm_george">bm_george (Anglaise UK - Homme)</option>
+                    <!-- Dynamically updated based on language -->
+                    <option value="af_bella" selected>af_bella (US English - Warm)</option>
+                    <option value="af_sarah">af_sarah (US English - Calm)</option>
+                    <option value="am_adam">am_adam (US English - Deep Male)</option>
+                    <option value="am_michael">am_michael (US English - Dynamic Male)</option>
+                    <option value="bf_emma">bf_emma (UK English - Distinguished)</option>
+                    <option value="bm_george">bm_george (UK English - Male)</option>
+                    <option value="ff_siwis">ff_siwis (French - Natural)</option>
                   </select>
                 </div>
                 <div class="form-group col">
-                  <label for="tts-speed">Vitesse de diction (<span id="tts-speed-val">1.00x</span>)</label>
+                  <label for="tts-speed">Speech Speed (<span id="tts-speed-val">1.00x</span>)</label>
                   <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('tts-speed-val').innerText = parseFloat(this.value).toFixed(2) + 'x'">
                 </div>
               </div>
 
               <!-- XTTS Voice Cloning Reference Section -->
               <div class="form-group" id="tts-xtts-ref-group" style="display: none;">
-                <label for="tts-speaker-wav">Fichier audio de référence pour clonage vocal (3 à 10s)</label>
+                <label for="tts-speaker-wav">Reference Audio File for Voice Cloning (3 to 10s)</label>
                 <div class="input-with-action">
-                  <input type="text" id="tts-speaker-wav" placeholder="Ex: ma_voix.wav ou choisissez un audio de la galerie">
-                  <button type="button" class="btn-secondary" onclick="openMediaPicker('tts-speaker-wav', '', 'audio')">📁 Galerie</button>
+                  <input type="text" id="tts-speaker-wav" placeholder="e.g. my_voice.wav or select an audio from gallery">
+                  <button type="button" class="btn-secondary" onclick="openMediaPicker('tts-speaker-wav', '', 'audio')">📁 Gallery</button>
                 </div>
-                <small class="form-help">XTTS-v2 imitera le timbre, la voix et l'intonation de cet extrait audio.</small>
+                <small class="form-help">XTTS-v2 will clone the timbre, tone, and intonation of this reference audio clip.</small>
               </div>
 
               <button type="submit" class="btn-primary btn-glow" onclick="handleTtsSubmit(event)">
-                <span id="tts-submit-text">🎙️ Générer la Voix</span>
+                <span id="tts-submit-text">🎙️ Generate Speech</span>
               </button>
             </form>
 
@@ -731,36 +743,36 @@
               <div class="lora-wizard-step">
                 <div class="step-badge-row">
                   <span class="step-number">1</span>
-                  <h4>📁 Dataset & Concept à Apprendre</h4>
+                  <h4>📁 Dataset & Concept to Learn</h4>
                 </div>
 
                 <div class="form-row">
                   <div class="form-group col">
-                    <label for="lora-dataset-select">Dataset d'images</label>
+                    <label for="lora-dataset-select">Image Dataset</label>
                     <select id="lora-dataset-select" onchange="handleLoraDatasetChange()">
-                      <option value="__new__">➕ Nouveau Dataset...</option>
+                      <option value="__new__">➕ New Dataset...</option>
                     </select>
                   </div>
                   <div class="form-group col" id="lora-new-dataset-group">
-                    <label for="lora-dataset-name">Nom du Dataset</label>
-                    <input type="text" id="lora-dataset-name" placeholder="Ex: mon-visage, parfum-luxe, style-cyberpunk">
+                    <label for="lora-dataset-name">Dataset Name</label>
+                    <input type="text" id="lora-dataset-name" placeholder="e.g. my-character, luxury-product, cyberpunk-style">
                   </div>
                 </div>
 
                 <div class="form-row">
                   <div class="form-group col">
-                    <label for="lora-category">Catégorie du sujet</label>
+                    <label for="lora-category">Subject Category</label>
                     <select id="lora-category">
-                      <option value="person" selected>👤 Personne / Visage</option>
-                      <option value="product">📦 Objet / Produit commercial</option>
-                      <option value="style">🎨 Style artistique</option>
-                      <option value="general">✨ Général</option>
+                      <option value="person" selected>👤 Person / Face</option>
+                      <option value="product">📦 Object / Commercial Product</option>
+                      <option value="style">🎨 Artistic Style</option>
+                      <option value="general">✨ General</option>
                     </select>
                   </div>
                   <div class="form-group col">
-                    <label for="lora-trigger">Mot déclencheur (Trigger Token)</label>
-                    <input type="text" id="lora-trigger" value="sks person" placeholder="Ex: sks person, ohwx watch">
-                    <small class="form-help">Le mot unique que vous utiliserez dans vos futurs prompts pour invoquer ce concept.</small>
+                    <label for="lora-trigger">Trigger Word (Trigger Token)</label>
+                    <input type="text" id="lora-trigger" value="sks person" placeholder="e.g. sks person, ohwx watch">
+                    <small class="form-help">The unique keyword you will use in future prompts to invoke this concept.</small>
                   </div>
                 </div>
 
@@ -768,8 +780,8 @@
                 <div class="dropzone lora-dropzone" id="lora-dropzone" onclick="document.getElementById('lora-files-input').click()">
                   <div class="dropzone-content">
                     <span class="drop-icon">📸</span>
-                    <p>Glissez-déposez 5 à 30 photos ici (ou cliquez pour parcourir)</p>
-                    <small class="text-dim">Formats acceptés : PNG, JPG, WEBP. Recommandé : photos nettes sous plusieurs angles.</small>
+                    <p>Drag & drop 5 to 30 photos here (or click to browse)</p>
+                    <small class="text-dim">Accepted formats: PNG, JPG, WEBP. Recommended: clear photos from various angles.</small>
                   </div>
                 </div>
                 <input type="file" id="lora-files-input" multiple accept="image/*" style="display:none;" onchange="handleLoraFilesUpload(event)">
@@ -779,55 +791,55 @@
               <div class="lora-wizard-step" id="lora-captions-step">
                 <div class="step-badge-row">
                   <span class="step-number">2</span>
-                  <h4>✨ Auto-Légendage & Descriptions des Photos</h4>
+                  <h4>✨ Auto-Captioning & Photo Descriptions</h4>
                   <button type="button" class="btn-secondary btn-sm" id="btn-autocaption" onclick="triggerAutoCaption()">
-                    <span id="btn-autocaption-text">🪄 Auto-Légender avec l'IA</span>
+                    <span id="btn-autocaption-text">🪄 Auto-Caption with AI</span>
                   </button>
                 </div>
-                <p class="section-desc">Chaque photo est associée à une légende intégrant votre mot déclencheur. Vous pouvez modifier le texte de chaque image en direct.</p>
+                <p class="section-desc">Each photo is paired with a caption containing your trigger word. You can edit the caption for each image directly.</p>
                 
                 <div class="dataset-images-grid" id="dataset-images-container">
                   <div class="empty-dataset-hint">
                     <span>🖼️</span>
-                    <p>Aucune photo dans ce dataset pour le moment. Uploadez des photos ci-dessus pour commencer.</p>
+                    <p>No photos in this dataset yet. Upload photos above to get started.</p>
                   </div>
                 </div>
               </div>
 
-              <!-- Step 3: Hyperparamètres & Optimisation VRAM -->
+              <!-- Step 3: Hyperparameters & VRAM Optimization -->
               <div class="lora-wizard-step">
                 <div class="step-badge-row">
                   <span class="step-number">3</span>
-                  <h4>⚙️ Paramètres d'Entraînement & Optimisations GPU</h4>
+                  <h4>⚙️ Training Settings & GPU Optimizations</h4>
                 </div>
 
                 <div class="form-row">
                   <div class="form-group col">
-                    <label for="lora-output-name">Nom du fichier LoRA (.safetensors)</label>
-                    <input type="text" id="lora-output-name" placeholder="Ex: mon_modele.safetensors">
+                    <label for="lora-output-name">LoRA Filename (.safetensors)</label>
+                    <input type="text" id="lora-output-name" placeholder="e.g. my_model.safetensors">
                   </div>
                   <div class="form-group col">
-                    <label for="lora-base-model">Modèle de Base</label>
+                    <label for="lora-base-model">Base Model</label>
                     <select id="lora-base-model">
-                      <option value="runwayml/stable-diffusion-v1-5" selected>⚡ Stable Diffusion 1.5 (Idéal 8 Go VRAM, rapide & léger)</option>
-                      <option value="stabilityai/stable-diffusion-xl-base-1.0">🌟 SDXL Base 1.0 (Haute Définition 1024x1024)</option>
+                      <option value="runwayml/stable-diffusion-v1-5" selected>⚡ Stable Diffusion 1.5 (Recommended for 8GB VRAM, fast & lightweight)</option>
+                      <option value="stabilityai/stable-diffusion-xl-base-1.0">🌟 SDXL Base 1.0 (High Definition 1024x1024)</option>
                     </select>
                   </div>
                 </div>
 
                 <div class="form-row">
                   <div class="form-group col">
-                    <label for="lora-train-steps">Étapes d'entraînement (Steps) : <strong id="lora-steps-val" class="accent-val">500</strong></label>
+                    <label for="lora-train-steps" data-i18n="label_lora_steps">Training Steps: <strong id="lora-steps-val" class="accent-val">500</strong></label>
                     <input type="range" id="lora-train-steps" min="100" max="2500" step="50" value="500" oninput="document.getElementById('lora-steps-val').textContent = this.value">
-                    <small class="form-help">500 steps ≈ 10-15 min sur RTX 2080 pour 10 photos.</small>
+                    <small class="form-help" data-i18n="lora_steps_help">500 steps ≈ 10-15 min on standard GPU for 10 images.</small>
                   </div>
                   <div class="form-group col">
-                    <label for="lora-rank">Rang LoRA (Dimension / Capacité)</label>
+                    <label for="lora-rank" data-i18n="label_lora_rank">LoRA Rank (Capacity / Dimension)</label>
                     <select id="lora-rank">
-                      <option value="4">Rank 4 (Ultra-léger, ~9 Mo)</option>
-                      <option value="8" selected>Rank 8 (Standard Recommandé, ~18 Mo)</option>
-                      <option value="16">Rank 16 (Haute fidélité détaillée, ~36 Mo)</option>
-                      <option value="32">Rank 32 (Fidélité maximale, ~72 Mo)</option>
+                      <option value="4">Rank 4 (Ultra-light, ~9 MB)</option>
+                      <option value="8" selected>Rank 8 (Standard Recommended, ~18 MB)</option>
+                      <option value="16">Rank 16 (High Detailed Fidelity, ~36 MB)</option>
+                      <option value="32">Rank 32 (Maximum Capacity, ~72 MB)</option>
                     </select>
                   </div>
                 </div>
@@ -836,22 +848,22 @@
                   <div class="hw-badge-item">
                     <span class="hw-icon">⚡</span>
                     <div>
-                      <strong>Accélération RTX 2080</strong>
-                      <p>Latents VAE pré-mis en cache en mémoire vive pour soulager le GPU.</p>
+                      <strong id="lora-hw-title" data-i18n="lora_hw_title">Hardware GPU Acceleration</strong>
+                      <p data-i18n="lora_hw_desc">VAE latents pre-cached in RAM to minimize GPU overhead.</p>
                     </div>
                   </div>
                   <div class="hw-badge-item">
                     <span class="hw-icon">🛡️</span>
                     <div>
-                      <strong>Sécurité Mémoire VRAM 8 Go</strong>
-                      <p>Précision FP16 + Gradient Accumulation x4 pour prévenir tout OOM.</p>
+                      <strong data-i18n="lora_vram_title">Adaptive VRAM Optimization</strong>
+                      <p data-i18n="lora_vram_desc">FP16 precision + Gradient Accumulation to prevent OOM.</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <button type="submit" class="btn-primary btn-glow" id="btn-submit-lora-train" onclick="handleLoraTrainSubmit(event)">
-                <span id="lora-train-submit-text">🚀 Lancer l'Entraînement LoRA</span>
+                <span id="lora-train-submit-text" data-i18n="btn_launch_lora">🚀 Launch LoRA Training</span>
               </button>
             </form>
           </div>
@@ -859,20 +871,20 @@
           <!-- Right Column: Live Job Activity & Preview -->
           <div class="card glass-card studio-live-panel">
             <div class="live-header">
-              <h3>⚡ Aperçu & Activité en Direct</h3>
-              <span class="badge" id="live-job-status-badge">En veille</span>
+              <h3>⚡ Live Preview & Activity</h3>
+              <span class="badge" id="live-job-status-badge">Idle</span>
             </div>
 
             <div class="live-preview-container" id="live-preview-box">
               <div class="preview-placeholder">
                 <div class="pulsing-circle"></div>
-                <p>Aucun job en cours d'exécution.</p>
-                <small>Lancez une génération depuis le panneau de gauche pour voir la progression et le résultat ici.</small>
+                <p>No jobs currently running.</p>
+                <small>Launch a generation from the left panel to see real-time progress and results here.</small>
               </div>
             </div>
 
             <div class="live-terminal-logs" id="live-logs-container">
-              <div class="log-line info">✨ RunPod Studio prêt. Choisissez un pipeline et lancez votre création.</div>
+              <div class="log-line info">✨ RunPod Studio ready. Select a pipeline and start creating.</div>
             </div>
           </div>
         </div>
@@ -882,18 +894,18 @@
       <section id="tab-gallery" class="tab-pane">
         <div class="section-header">
           <div>
-            <h2>Gestionnaire de Médias</h2>
-            <p class="subtitle">Tous vos fichiers entrants, sources et vidéos générées en un seul endroit.</p>
+            <h2>Media Gallery</h2>
+            <p class="subtitle">All your incoming media, sources, and generated outputs in one place.</p>
           </div>
           <div class="gallery-controls">
             <div class="filter-group">
-              <button class="filter-btn active" data-filter="all">Tous</button>
-              <button class="filter-btn" data-filter="videos">🎬 Vidéos</button>
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="videos">🎬 Videos</button>
               <button class="filter-btn" data-filter="images">🖼️ Images</button>
               <button class="filter-btn" data-filter="audio">🎙️ Audio</button>
             </div>
             <button class="btn-primary" onclick="document.getElementById('file-upload-input').click()">
-              <span>⬆️ Importer un Média</span>
+              <span>⬆️ Upload Media</span>
             </button>
             <input type="file" id="file-upload-input" style="display:none;" multiple accept="image/*,video/*,audio/*" onchange="handleFileUpload(event)">
           </div>
@@ -903,7 +915,7 @@
         <div class="dropzone" id="gallery-dropzone">
           <div class="dropzone-content">
             <span class="drop-icon">📥</span>
-            <p>Glissez-déposez vos images ou vidéos ici pour les importer dans la bibliothèque</p>
+            <p>Drag & drop your images, videos, or audio here to import into library</p>
           </div>
         </div>
 
@@ -917,12 +929,12 @@
       <section id="tab-prompts" class="tab-pane">
         <div class="section-header">
           <div>
-            <h2>Bibliothèque & Historique des Prompts</h2>
-            <p class="subtitle">Retrouvez, filtrez, marquez vos favoris et réutilisez facilement tous vos prompts.</p>
+            <h2>Prompt Library & History</h2>
+            <p class="subtitle">Discover, filter, bookmark favorites, and reuse all your prompts easily.</p>
           </div>
           <div class="header-actions">
             <button class="btn-primary" onclick="openNewPromptModal()">
-              <span>➕ Nouveau Prompt</span>
+              <span>➕ New Prompt</span>
             </button>
           </div>
         </div>
@@ -930,17 +942,17 @@
         <div class="prompts-toolbar">
           <div class="search-box">
             <span class="search-icon">🔍</span>
-            <input type="text" id="prompts-search-input" placeholder="Rechercher un prompt..." oninput="filterPrompts()">
+            <input type="text" id="prompts-search-input" placeholder="Search prompts..." oninput="filterPrompts()">
           </div>
           <div class="filter-pills">
-            <button class="pill-btn active" data-prompt-filter="all" onclick="setPromptFilter('all')">Tous (<span id="count-all-prompts">0</span>)</button>
-            <button class="pill-btn" data-prompt-filter="favorites" onclick="setPromptFilter('favorites')">⭐ Favoris</button>
+            <button class="pill-btn active" data-prompt-filter="all" onclick="setPromptFilter('all')">All (<span id="count-all-prompts">0</span>)</button>
+            <button class="pill-btn" data-prompt-filter="favorites" onclick="setPromptFilter('favorites')">⭐ Favorites</button>
             <button class="pill-btn" data-prompt-filter="txt2vid" onclick="setPromptFilter('txt2vid')">🎬 Text-to-Video</button>
             <button class="pill-btn" data-prompt-filter="img2vid" onclick="setPromptFilter('img2vid')">🖼️ Image-to-Video</button>
             <button class="pill-btn" data-prompt-filter="vid2vid" onclick="setPromptFilter('vid2vid')">🎞️ Vid2Vid</button>
             <button class="pill-btn" data-prompt-filter="txt2img" onclick="setPromptFilter('txt2img')">✨ Flux</button>
             <button class="pill-btn" data-prompt-filter="tts" onclick="setPromptFilter('tts')">🎙️ Text-to-Speech</button>
-            <button class="pill-btn" data-prompt-filter="enhanced" onclick="setPromptFilter('enhanced')">🧠 Optimisés</button>
+            <button class="pill-btn" data-prompt-filter="enhanced" onclick="setPromptFilter('enhanced')">🧠 Optimized</button>
           </div>
         </div>
 
@@ -953,10 +965,10 @@
       <section id="tab-jobs" class="tab-pane">
         <div class="section-header">
           <div>
-            <h2>Historique & Suivi des Jobs</h2>
-            <p class="subtitle">Consultez l'historique complet des exécutions, temps de calcul et métriques.</p>
+            <h2>Queue & Jobs History</h2>
+            <p class="subtitle">View the complete history of executions, compute times, and metrics.</p>
           </div>
-          <button class="btn-secondary" onclick="clearCompletedJobs()">Effacer l'historique</button>
+          <button class="btn-secondary" onclick="clearCompletedJobs()">Clear History</button>
         </div>
 
         <div class="jobs-list" id="jobs-list-container">
@@ -968,8 +980,8 @@
       <section id="tab-settings" class="tab-pane">
         <div class="section-header">
           <div>
-            <h2>Paramètres & Configuration RunPod</h2>
-            <p class="subtitle">Gérez vos clés d'authentification et configurez vos endpoints d'IA par défaut.</p>
+            <h2>Settings & RunPod Configuration</h2>
+            <p class="subtitle">Manage your authentication keys and configure your default AI endpoints.</p>
           </div>
         </div>
 
@@ -979,8 +991,8 @@
             <div class="account-title-group">
               <div class="account-avatar">⚡</div>
               <div>
-                <h3>Compte & Facturation RunPod</h3>
-                <span class="account-sub-email" id="settings-account-email">Chargement du compte...</span>
+                <h3>RunPod Account & Billing</h3>
+                <span class="account-sub-email" id="settings-account-email">Loading account...</span>
               </div>
             </div>
             <div class="account-header-actions">
@@ -988,33 +1000,33 @@
                 <span>🔗 Console RunPod</span>
               </a>
               <button type="button" class="btn-secondary btn-sm" onclick="fetchBalance(true)">
-                <span class="refresh-icon">🔄</span> Actualiser
+                <span class="refresh-icon">🔄</span> Refresh
               </button>
             </div>
           </div>
 
           <div class="balance-grid">
             <div class="balance-stat-card primary">
-              <span class="stat-title">Solde Disponible</span>
+              <span class="stat-title">Available Balance</span>
               <div class="stat-number-wrapper">
                 <span class="stat-number" id="settings-balance-val">--</span>
                 <span class="stat-curr">$ USD</span>
               </div>
-              <span class="stat-note">Prêt pour vos générations IA</span>
+              <span class="stat-note">Ready for your AI generations</span>
             </div>
 
             <div class="balance-stat-card">
-              <span class="stat-title">Identifiant Compte</span>
+              <span class="stat-title">Account ID</span>
               <span class="stat-code" id="settings-account-id">--</span>
               <span class="stat-note">RunPod User ID</span>
             </div>
 
             <div class="balance-stat-card">
-              <span class="stat-title">État de la Connexion</span>
+              <span class="stat-title">Connection Status</span>
               <div class="stat-badge-connected" id="settings-connection-status">
-                <span class="status-dot online"></span> Connecté
+                <span class="status-dot online"></span> Connected
               </div>
-              <span class="stat-note" id="settings-balance-time">Vérifié à l'instant</span>
+              <span class="stat-note" id="settings-balance-time">Checked just now</span>
             </div>
           </div>
         </div>
@@ -1022,9 +1034,15 @@
         <div class="card glass-card settings-card">
           <form id="form-settings" onsubmit="saveSettings(event)">
             <div class="form-group">
-              <label for="setting-api-key">Clé API RunPod (RUNPOD_API_KEY)</label>
+              <label for="setting-api-key">RunPod API Key (RUNPOD_API_KEY)</label>
               <input type="password" id="setting-api-key" placeholder="rpa_xxxxxxxxxxxxxxxxxxxxxxxx">
-              <small class="help-text">Obtenue depuis votre console RunPod dans <em>User Settings → API Keys</em>.</small>
+              <small class="help-text">Obtained from your RunPod console under <em>User Settings → API Keys</em>.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="setting-hf-token" data-i18n="label_hf_token">Hugging Face Access Token (HF_TOKEN)</label>
+              <input type="password" id="setting-hf-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxx">
+              <small class="help-text" data-i18n="settings_hf_token_help">Required to download gated models like Lightricks/LTX-Video (~11 GB). Create a Read token on <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener" style="color:var(--accent-primary, #8b5cf6);">huggingface.co/settings/tokens</a> and accept the model license terms.</small>
             </div>
 
             <div class="form-row">
@@ -1044,29 +1062,65 @@
 
             <div class="form-row">
               <div class="form-group col">
-                <label for="setting-flux-endpoint">Endpoint Flux (Image)</label>
+                <label for="setting-flux-endpoint">Flux Endpoint (Image)</label>
                 <input type="text" id="setting-flux-endpoint" value="black-forest-labs-flux-1-schnell">
               </div>
               <div class="form-group col">
-                <label for="setting-faceswap-endpoint">Endpoint Face Swap</label>
+                <label for="setting-faceswap-endpoint">Face Swap Endpoint</label>
                 <input type="text" id="setting-faceswap-endpoint" value="1peyap2qc3tx31">
               </div>
               <div class="form-group col">
-                <label for="setting-llm-endpoint">Endpoint LLM Qwen3</label>
+                <label for="setting-llm-endpoint">LLM Qwen3 Endpoint</label>
                 <input type="text" id="setting-llm-endpoint" value="qwen3-32b-awq">
               </div>
             </div>
 
             <div class="form-group">
-              <label for="setting-local-model">Modèle Diffusers Local par défaut (HuggingFace ID)</label>
-              <input type="text" id="setting-local-model" value="stabilityai/sdxl-turbo" placeholder="ex: stabilityai/sdxl-turbo, ByteDance/SDXL-Lightning">
-              <small class="help-text">Modèle chargé sur la RTX 2080 en mode local.</small>
+              <label for="setting-local-model" data-i18n="label_local_model">Default Local Diffusers Model (HuggingFace ID)</label>
+              <input type="text" id="setting-local-model" value="stabilityai/sdxl-turbo" placeholder="e.g. stabilityai/sdxl-turbo, ByteDance/SDXL-Lightning">
+              <small class="help-text" data-i18n="settings_local_model_help">Default model loaded on Pod GPU in local mode.</small>
             </div>
 
             <button type="submit" class="btn-primary">
-              <span>💾 Enregistrer les Paramètres</span>
+              <span data-i18n="btn_save_settings">💾 Save Settings</span>
             </button>
           </form>
+        </div>
+
+        <div class="card glass-card settings-card" style="margin-top: 24px;">
+          <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span>📦</span>
+            <span data-i18n="models_manager_title">Pod GPU Models & Hugging Face Weights</span>
+          </h3>
+          <p class="section-desc" style="margin-bottom: 18px;" data-i18n="models_manager_desc">
+            Advanced models like LTX-Video 2.5 DiT run directly on your Pod GPU and require downloading the model weights (~11 GB).
+          </p>
+
+          <div id="models-status-list" class="models-status-container">
+            <div class="model-item-card">
+              <div class="model-item-header">
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; color: #fff;">Lightricks LTX-Video 2.5</h4>
+                  <small style="color: var(--text-dim, #94a3b8);">Hugging Face: <a href="https://huggingface.co/Lightricks/LTX-Video" target="_blank" rel="noopener" style="color: #a78bfa;">Lightricks/LTX-Video</a> (License required)</small>
+                </div>
+                <span id="model-badge-ltx" class="status-badge">Checking...</span>
+              </div>
+              <p style="margin: 10px 0 14px 0; font-size: 0.82rem; color: var(--text-dim, #94a3b8);">
+                Ultra-fast DiT Text-to-Video and Image-to-Video engine optimized for Pod GPU with VAE Tiling and CPU offload (~11 GB).
+              </p>
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div id="model-path-ltx" style="font-size: 0.78rem; color: #64748b; font-family: monospace;">--</div>
+                <div style="display: flex; gap: 10px;">
+                  <a href="https://huggingface.co/Lightricks/LTX-Video" target="_blank" rel="noopener" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; text-decoration: none;">
+                    📜 Accept HF License
+                  </a>
+                  <button type="button" id="btn-download-ltx" class="btn-primary" onclick="downloadModel('ltx-video')" style="padding: 6px 14px; font-size: 0.8rem;">
+                    ⬇️ Download (~11 GB)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -1092,13 +1146,13 @@
   <div class="modal" id="picker-modal" onclick="closePickerModal(event)">
     <div class="modal-content picker-content" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3 id="picker-modal-title">Sélectionner un Média Source</h3>
+        <h3 id="picker-modal-title">Select Source Media</h3>
         <button class="modal-close" onclick="closePickerModal()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="search-box" style="margin-bottom: 16px;">
           <span class="search-icon">🔍</span>
-          <input type="text" id="picker-search-input" placeholder="Rechercher par nom..." oninput="filterPickerMedia()">
+          <input type="text" id="picker-search-input" placeholder="Search by name..." oninput="filterPickerMedia()">
         </div>
         <div class="media-grid picker-grid" id="picker-grid-container">
           <!-- Picker items dynamically filled -->
@@ -1111,13 +1165,13 @@
   <div class="modal" id="prompt-selector-modal" onclick="closePromptSelectorModal(event)">
     <div class="modal-content prompt-modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3>📜 Choisir un Prompt dans l'Historique</h3>
+        <h3>📜 Choose a Prompt from History</h3>
         <button class="modal-close" onclick="closePromptSelectorModal()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="search-box" style="margin-bottom: 16px;">
           <span class="search-icon">🔍</span>
-          <input type="text" id="prompt-modal-search" placeholder="Filtrer parmi vos prompts..." oninput="filterSelectorPrompts()">
+          <input type="text" id="prompt-modal-search" placeholder="Filter your prompts..." oninput="filterSelectorPrompts()">
         </div>
         <div class="prompt-selector-list" id="prompt-selector-list-container">
           <!-- Dynamically populated -->
@@ -1130,17 +1184,17 @@
   <div class="modal" id="new-prompt-modal" onclick="closeNewPromptModal(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3>➕ Ajouter un Prompt à la Bibliothèque</h3>
+        <h3>➕ Add Prompt to Library</h3>
         <button class="modal-close" onclick="closeNewPromptModal()">&times;</button>
       </div>
       <div class="modal-body">
         <form id="form-new-prompt" onsubmit="submitNewPrompt(event)">
           <div class="form-group">
-            <label for="new-prompt-text">Texte du Prompt</label>
-            <textarea id="new-prompt-text" rows="4" required placeholder="Saisissez la description du prompt..."></textarea>
+            <label for="new-prompt-text">Prompt Text</label>
+            <textarea id="new-prompt-text" rows="4" required placeholder="Enter prompt description..."></textarea>
           </div>
           <div class="form-group">
-            <label for="new-prompt-category">Catégorie / Pipeline</label>
+            <label for="new-prompt-category">Category / Pipeline</label>
             <select id="new-prompt-category">
               <option value="txt2vid" selected>🎬 Text-to-Video</option>
               <option value="img2vid">🖼️ Image-to-Video</option>
@@ -1148,12 +1202,12 @@
               <option value="vid2vid">🎞️ Video-to-Video</option>
               <option value="txt2img">✨ Text-to-Image (Flux)</option>
               <option value="tts">🎙️ Text-to-Speech</option>
-              <option value="general">Général / Autre</option>
+              <option value="general">General / Other</option>
             </select>
           </div>
           <div class="modal-footer" style="padding-top: 15px;">
-            <button type="button" class="btn-secondary" onclick="closeNewPromptModal()">Annuler</button>
-            <button type="submit" class="btn-primary">Enregistrer</button>
+            <button type="button" class="btn-secondary" onclick="closeNewPromptModal()">Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
           </div>
         </form>
       </div>
@@ -1164,7 +1218,7 @@
   <div class="modal" id="crop-modal" onclick="closeCropModal(event)">
     <div class="modal-content crop-modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3 id="crop-modal-title">✂️ Recadrer le Média (Optimisé 512x512 Face Swap)</h3>
+        <h3 id="crop-modal-title">✂️ Crop Media (Optimized for 512x512 Face Swap)</h3>
         <button class="modal-close" onclick="closeCropModal()">&times;</button>
       </div>
       <div class="modal-body crop-modal-body">
@@ -1184,7 +1238,7 @@
               </div>
             </div>
             <div class="crop-viewport-controls" id="crop-video-controls" style="display: none;">
-              <button type="button" class="btn-secondary btn-sm" id="btn-crop-play-pause" onclick="toggleCropPlay()">▶ Lecture</button>
+              <button type="button" class="btn-secondary btn-sm" id="btn-crop-play-pause" onclick="toggleCropPlay()">▶ Play</button>
               <input type="range" id="crop-video-seek" min="0" max="100" value="0" step="0.1" oninput="seekCropVideo(this.value)">
               <span class="crop-time-label" id="crop-time-label">0:00 / 0:00</span>
             </div>
@@ -1193,57 +1247,57 @@
           <!-- Right: Controls, Ratios, Resolutions & Destination -->
           <div class="crop-settings-panel">
             <div class="crop-group">
-              <label class="crop-label">Format / Ratio</label>
+              <label class="crop-label">Format / Aspect Ratio</label>
               <div class="crop-preset-pills">
-                <button type="button" class="pill-btn active" data-ratio="1:1" onclick="setCropRatio('1:1')">1:1 (Carré Face Swap)</button>
+                <button type="button" class="pill-btn active" data-ratio="1:1" onclick="setCropRatio('1:1')">1:1 (Square Face Swap)</button>
                 <button type="button" class="pill-btn" data-ratio="9:16" onclick="setCropRatio('9:16')">9:16 (Portrait)</button>
-                <button type="button" class="pill-btn" data-ratio="16:9" onclick="setCropRatio('16:9')">16:9 (Paysage)</button>
-                <button type="button" class="pill-btn" data-ratio="free" onclick="setCropRatio('free')">Libre</button>
+                <button type="button" class="pill-btn" data-ratio="16:9" onclick="setCropRatio('16:9')">16:9 (Landscape)</button>
+                <button type="button" class="pill-btn" data-ratio="free" onclick="setCropRatio('free')">Free</button>
               </div>
             </div>
 
             <div class="crop-group">
-              <label class="crop-label">Résolution de sortie cible</label>
+              <label class="crop-label">Target Output Resolution</label>
               <select id="crop-target-resolution" class="crop-select">
-                <option value="512x512" selected>512 x 512 px (Recommandé Face Swap & Vitesse)</option>
-                <option value="768x768">768 x 768 px (Haute Définition)</option>
+                <option value="512x512" selected>512 x 512 px (Recommended for Face Swap & Speed)</option>
+                <option value="768x768">768 x 768 px (High Definition)</option>
                 <option value="1024x1024">1024 x 1024 px (Full HD)</option>
-                <option value="original">Conserver la taille exacte recadrée</option>
+                <option value="original">Keep exact cropped dimensions</option>
               </select>
             </div>
 
             <div class="crop-group">
-              <label class="crop-label">Coordonnées du recadrage</label>
+              <label class="crop-label">Crop Coordinates</label>
               <div class="crop-coords-grid">
                 <div class="coord-box"><span>X :</span> <strong id="crop-val-x">0</strong></div>
                 <div class="coord-box"><span>Y :</span> <strong id="crop-val-y">0</strong></div>
-                <div class="coord-box"><span>Larg :</span> <strong id="crop-val-w">512</strong></div>
-                <div class="coord-box"><span>Haut :</span> <strong id="crop-val-h">512</strong></div>
+                <div class="coord-box"><span>Width:</span> <strong id="crop-val-w">512</strong></div>
+                <div class="coord-box"><span>Height:</span> <strong id="crop-val-h">512</strong></div>
               </div>
             </div>
 
             <div class="crop-group">
-              <label class="crop-label">Action après recadrage</label>
+              <label class="crop-label">Action After Cropping</label>
               <select id="crop-target-action" class="crop-select">
-                <option value="faceswap-target" selected>🎯 Sélectionner comme Cible Face Swap</option>
-                <option value="faceswap-source">👤 Sélectionner comme Visage Source</option>
-                <option value="img2img-source">🎨 Sélectionner pour Image-to-Image</option>
-                <option value="img2vid-source">🖼️ Sélectionner pour Image-to-Video</option>
-                <option value="vid2vid-source">🎞️ Sélectionner pour Video-to-Video</option>
-                <option value="gallery">📁 Enregistrer uniquement dans la Galerie</option>
+                <option value="faceswap-target" selected>🎯 Select as Face Swap Target</option>
+                <option value="faceswap-source">👤 Select as Source Face</option>
+                <option value="img2img-source">🎨 Select for Image-to-Image</option>
+                <option value="img2vid-source">🖼️ Select for Image-to-Video</option>
+                <option value="vid2vid-source">🎞️ Select for Video-to-Video</option>
+                <option value="gallery">📁 Save to Media Gallery only</option>
               </select>
             </div>
 
             <div class="crop-info-box">
-              <span>💡 <strong>Astuce :</strong> Recadrer votre image ou vidéo permet d'ajuster précisément la zone d'intérêt avant transformation !</span>
+              <span>💡 <strong>Tip:</strong> Cropping your image or video allows you to precisely frame the area of interest before processing!</span>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-footer crop-modal-footer">
-        <button type="button" class="btn-secondary" onclick="closeCropModal()">Annuler</button>
+        <button type="button" class="btn-secondary" onclick="closeCropModal()">Cancel</button>
         <button type="button" class="btn-primary btn-glow" id="btn-submit-crop" onclick="executeCrop()">
-          <span id="btn-crop-text">✂️ Valider et Recadrer</span>
+          <span id="btn-crop-text">✂️ Apply & Crop</span>
         </button>
       </div>
     </div>
@@ -1253,22 +1307,22 @@
   <div class="modal" id="mask-modal" onclick="closeMaskModal(event)">
     <div class="modal-content mask-modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3 id="mask-modal-title">🖌️ Éditeur de Masque Inpainting</h3>
+        <h3 id="mask-modal-title">🖌️ Inpainting Mask Editor</h3>
         <button class="modal-close" onclick="closeMaskModal()">&times;</button>
       </div>
       <div class="modal-body mask-modal-body">
         <div class="mask-toolbar">
           <div class="mask-tool-group">
-            <button type="button" class="pill-btn active" id="btn-mask-brush" onclick="setMaskTool('brush')">🖌️ Pinceau (Masquer)</button>
-            <button type="button" class="pill-btn" id="btn-mask-eraser" onclick="setMaskTool('eraser')">🧹 Gomme</button>
+            <button type="button" class="pill-btn active" id="btn-mask-brush" onclick="setMaskTool('brush')">🖌️ Brush (Mask)</button>
+            <button type="button" class="pill-btn" id="btn-mask-eraser" onclick="setMaskTool('eraser')">🧹 Eraser</button>
           </div>
           <div class="mask-tool-group brush-slider-group">
-            <label for="mask-brush-size">Taille : <span id="mask-brush-size-val">35px</span></label>
+            <label for="mask-brush-size">Size: <span id="mask-brush-size-val">35px</span></label>
             <input type="range" id="mask-brush-size" min="5" max="150" value="35" oninput="updateBrushSize(this.value)">
           </div>
           <div class="mask-tool-group">
-            <button type="button" class="btn-secondary btn-sm" onclick="invertMaskCanvas()">🔄 Inverser</button>
-            <button type="button" class="btn-secondary btn-sm" onclick="clearMaskCanvas()">🗑️ Tout Effacer</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="invertMaskCanvas()">🔄 Invert</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="clearMaskCanvas()">🗑️ Clear All</button>
           </div>
         </div>
 
@@ -1279,45 +1333,52 @@
         </div>
 
         <div class="crop-info-box" style="margin-top: 10px;">
-          <span>💡 <strong>Astuce :</strong> Peignez en blanc/rose sur la zone que vous souhaitez <strong>modifier ou remplacer</strong>. La zone non masquée restera strictement préservée !</span>
+          <span>💡 <strong>Tip:</strong> Paint over the area you want to <strong>modify or replace</strong>. The unmasked area will be strictly preserved!</span>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="closeMaskModal()">Annuler</button>
+        <button type="button" class="btn-secondary" onclick="closeMaskModal()">Cancel</button>
         <button type="button" class="btn-primary btn-glow" onclick="saveMaskAndClose()">
-          <span>✓ Valider le Masque</span>
+          <span>✓ Save Mask</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal Wi-Fi / Mobile Connection -->
-  <div class="modal" id="wifi-modal">
-    <div class="modal-content" style="max-width: 460px;">
+  <!-- Modal RunPod Mobile Access -->
+  <div class="modal" id="mobile-modal">
+    <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
-        <h3>📱 Accès Mobile Wi-Fi</h3>
-        <button class="modal-close" onclick="closeWifiModal()">&times;</button>
+        <h3 data-i18n="mobile_modal_title">📱 Mobile RunPod Access</h3>
+        <button class="modal-close" onclick="closeMobileModal()">&times;</button>
       </div>
       <div class="modal-body" style="flex-direction: column; text-align: center; gap: 16px; padding: 24px 20px;">
-        <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
-          Connectez votre téléphone Android au même réseau <strong>Wi-Fi</strong> pour piloter le studio directement depuis votre mobile :
+        <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.5; margin: 0;" data-i18n="mobile_modal_desc">
+          Scan this QR code with your smartphone camera to access and control your RunPod Studio directly from your mobile device:
         </p>
 
-        <div id="wifi-qr-container" style="display: flex; justify-content: center; align-items: center; background: #fff; padding: 14px; border-radius: 12px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-          <img id="wifi-qr-img" src="" alt="QR Code Wi-Fi" style="width: 190px; height: 190px; display: block; border: none; border-radius: 4px;">
+        <div id="mobile-qr-container" style="display: flex; justify-content: center; align-items: center; background: #fff; padding: 14px; border-radius: 12px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+          <img id="mobile-qr-img" src="" alt="RunPod Mobile QR Code" style="width: 190px; height: 190px; display: block; border: none; border-radius: 4px;">
         </div>
 
         <div style="background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%;">
-          <span style="font-size: 0.76rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">Adresse URL Mobile</span>
-          <a id="wifi-url-link" href="#" target="_blank" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-cyan); text-decoration: none; font-family: var(--font-mono); word-break: break-all;">Chargement...</a>
+          <span style="font-size: 0.76rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;" data-i18n="mobile_url_label">RunPod Mobile Web URL</span>
+          <a id="mobile-url-link" href="#" target="_blank" style="font-size: 1.05rem; font-weight: 700; color: var(--accent-cyan); text-decoration: none; font-family: var(--font-mono); word-break: break-all;">Loading...</a>
         </div>
 
-        <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">
-          💡 <strong>Astuce :</strong> Scannez le QR Code avec l'appareil photo de votre smartphone ou ouvrez Chrome sur Android et tapez l'adresse ci-dessus !
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary btn-sm" onclick="copyMobileUrl()">
+            <span id="btn-copy-url-text" data-i18n="btn_copy_url">📋 Copy URL</span>
+          </button>
+          <a id="mobile-open-link" href="#" target="_blank" class="btn-secondary btn-sm" data-i18n="btn_open_tab">↗️ Open in New Tab</a>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;" data-i18n="mobile_tip">
+          💡 <strong>Tip:</strong> Open this URL in Safari (iOS) or Chrome (Android) and add it to your home screen to use it like a native mobile app!
         </p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-primary" onclick="closeWifiModal()">Fermer</button>
+        <button type="button" class="btn-primary" onclick="closeMobileModal()" data-i18n="btn_close">Close</button>
       </div>
     </div>
   </div>

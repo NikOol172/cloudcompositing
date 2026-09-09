@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 High-Performance Local Text-to-Speech (TTS) Engine supporting Kokoro-82M & Coqui XTTS-v2.
-Optimized for NVIDIA RTX 2080 (8GB VRAM) and CUDA/CPU inference.
+Optimized for CUDA / Pod GPUs and CPU inference.
 """
 
 import os

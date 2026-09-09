@@ -72,6 +72,8 @@ pub struct PromptEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerSettings {
     pub api_key: String,
+    #[serde(default)]
+    pub hf_token: String,
     pub base_url: String,
     pub wan_endpoint: String,
     #[serde(default = "default_ltx_endpoint")]
@@ -109,8 +111,13 @@ impl ServerSettings {
 
 impl Default for ServerSettings {
     fn default() -> Self {
+        let hf_tok = std::env::var("HF_TOKEN")
+            .or_else(|_| std::env::var("HUGGINGFACE_HUB_TOKEN"))
+            .unwrap_or_default();
+
         Self {
             api_key: std::env::var("RUNPOD_API_KEY").unwrap_or_default(),
+            hf_token: hf_tok,
             base_url: "https://api.runpod.ai/v2".to_string(),
             wan_endpoint: std::env::var("RUNPOD_WAN_ENDPOINT").unwrap_or_else(|_| "wan-2-5".to_string()),
             ltx_endpoint: default_ltx_endpoint(),
@@ -133,7 +140,31 @@ pub struct AppState {
 
 pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
     let workspace_dir = std::env::current_dir()?;
-    let settings = ServerSettings::default();
+
+    let settings_file = workspace_dir.join(".settings.json");
+    let mut settings = if settings_file.exists() {
+        tokio::fs::read_to_string(&settings_file)
+            .await
+            .ok()
+            .and_then(|s| serde_json::from_str::<ServerSettings>(&s).ok())
+            .unwrap_or_default()
+    } else {
+        ServerSettings::default()
+    };
+
+    if settings.api_key.trim().is_empty() {
+        if let Ok(key) = std::env::var("RUNPOD_API_KEY") {
+            settings.api_key = key;
+        }
+    }
+    if settings.hf_token.trim().is_empty() {
+        let hf_tok = std::env::var("HF_TOKEN")
+            .or_else(|_| std::env::var("HUGGINGFACE_HUB_TOKEN"))
+            .unwrap_or_default();
+        if !hf_tok.is_empty() {
+            settings.hf_token = hf_tok;
+        }
+    }
 
     // Charger l'historique des prompts existant s'il existe
     let prompts_file = workspace_dir.join("prompts_history.json");
@@ -164,6 +195,9 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
         .route("/api/prompts/:id/favorite", post(toggle_favorite_prompt))
         .route("/api/settings", get(get_settings).post(save_settings))
         .route("/api/balance", get(get_balance))
+        .route("/api/system/info", get(get_system_info))
+        .route("/api/models/status", get(get_models_status))
+        .route("/api/models/download", post(download_model))
         .route("/api/crop", post(crop_media))
         .route("/api/generate/txt2vid", post(generate_txt2vid))
         .route("/api/generate/img2vid", post(generate_img2vid))
@@ -194,13 +228,13 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let url = format!("http://localhost:{}", port);
 
-    println!("\n{}", style("🚀 RunPod Studio & Media Manager démarré !").bold().magenta());
-    println!("  • PC Local (Bureau)  : {}", style(&url).cyan().underlined().bold());
+    println!("\n{}", style("🚀 RunPod Studio & Media Manager ready!").bold().magenta());
+    println!("  • Local Web UI   : {}", style(&url).cyan().underlined().bold());
     if let Some(lan_ip) = crate::utils::get_local_lan_ip() {
-        println!("  • Mobile / Wi-Fi     : {}", style(format!("http://{}:{}", lan_ip, port)).green().underlined().bold());
+        println!("  • Mobile / Wi-Fi : {}", style(format!("http://{}:{}", lan_ip, port)).green().underlined().bold());
     }
-    println!("  • Écoute réseau      : {}", style(&addr).dim());
-    println!("  • Appuyez sur {} pour quitter.\n", style("Ctrl+C").yellow().bold());
+    println!("  • Network Listen : {}", style(&addr).dim());
+    println!("  • Press {} to stop.\n", style("Ctrl+C").yellow().bold());
 
     if open_browser {
         let _ = open::that_detached(&url);
@@ -301,20 +335,31 @@ pub struct NetworkInfo {
     pub lan_ip: Option<String>,
     pub port: u16,
     pub mobile_url: String,
+    pub runpod_pod_id: Option<String>,
+    pub is_runpod: bool,
 }
 
 async fn get_network_info() -> Json<NetworkInfo> {
-    let lan_ip = crate::utils::get_local_lan_ip();
     let port = 3000;
-    let mobile_url = if let Some(ref ip) = lan_ip {
-        format!("http://{}:{}", ip, port)
+    let pod_id = std::env::var("RUNPOD_POD_ID")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let (mobile_url, is_runpod) = if let Some(ref id) = pod_id {
+        (format!("https://{}-{}.proxy.runpod.net", id, port), true)
+    } else if let Some(ref ip) = crate::utils::get_local_lan_ip() {
+        (format!("http://{}:{}", ip, port), false)
     } else {
-        format!("http://localhost:{}", port)
+        (format!("http://localhost:{}", port), false)
     };
+
     Json(NetworkInfo {
-        lan_ip,
+        lan_ip: crate::utils::get_local_lan_ip(),
         port,
         mobile_url,
+        runpod_pod_id: pod_id,
+        is_runpod,
     })
 }
 
@@ -582,8 +627,8 @@ fn create_client_with_tracking(state: AppState, job_id: String, api_key: String,
                     let msg = match st.as_str() {
                         "IN_QUEUE" => format!("⏳ Job RunPod ({}) en file d'attente...", r_id),
                         "IN_PROGRESS" => format!("⚡ GPU actif : traitement en cours sur '{}' ({})", ep, r_id),
-                        "COMPLETED" => format!("✓ Traitement GPU RunPod terminé avec succès ({})", r_id),
-                        "FAILED" => format!("❌ Échec du worker RunPod ({})", r_id),
+                        "COMPLETED" => format!("✓ RunPod GPU processing completed successfully ({})", r_id),
+                        "FAILED" => format!("❌ RunPod worker failed ({})", r_id),
                         _ => format!("ℹ️ Statut RunPod : {}", st),
                     };
                     j.logs.push(JobLog {
@@ -766,10 +811,24 @@ async fn save_settings(
     State(state): State<AppState>,
     Json(new_settings): Json<ServerSettings>,
 ) -> StatusCode {
+    if !new_settings.hf_token.trim().is_empty() {
+        std::env::set_var("HF_TOKEN", new_settings.hf_token.trim());
+        std::env::set_var("HUGGINGFACE_HUB_TOKEN", new_settings.hf_token.trim());
+    }
+    if !new_settings.api_key.trim().is_empty() {
+        std::env::set_var("RUNPOD_API_KEY", new_settings.api_key.trim());
+    }
+
+    let settings_file = state.workspace_dir.join(".settings.json");
+    if let Ok(data) = serde_json::to_string_pretty(&new_settings) {
+        let _ = tokio::fs::write(&settings_file, data).await;
+    }
+
     let mut settings = state.settings.lock().await;
     *settings = new_settings;
     StatusCode::OK
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BalanceResponse {
@@ -791,7 +850,7 @@ async fn get_balance(State(state): State<AppState>) -> Json<BalanceResponse> {
             id: None,
             email: None,
             client_balance: None,
-            error: Some("Clé API RunPod non configurée".to_string()),
+            error: Some("RunPod API key not configured".to_string()),
         });
     }
 
@@ -813,6 +872,528 @@ async fn get_balance(State(state): State<AppState>) -> Json<BalanceResponse> {
         }),
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemInfo {
+    pub has_gpu: bool,
+    pub gpu_name: Option<String>,
+    pub vram_mb: Option<u64>,
+}
+
+async fn get_system_info() -> Json<SystemInfo> {
+    // 1. Essayer nvidia-smi (rapide et standard)
+    if let Ok(output) = tokio::process::Command::new("nvidia-smi")
+        .args(["--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
+        .output()
+        .await
+    {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if let Some(line) = stdout.lines().next() {
+                let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
+                if !parts.is_empty() && !parts[0].is_empty() {
+                    let name = parts[0].to_string();
+                    let vram = parts.get(1).and_then(|v| v.parse::<u64>().ok());
+                    return Json(SystemInfo {
+                        has_gpu: true,
+                        gpu_name: Some(name),
+                        vram_mb: vram,
+                    });
+                }
+            }
+        }
+    }
+
+    // 2. Fallback via Python si disponible
+    let py_bin = crate::utils::get_python_binary();
+    if let Ok(output) = tokio::process::Command::new(&py_bin)
+        .args(["-c", "import torch; print(f'{torch.cuda.get_device_name(0)}|{int(torch.cuda.get_device_properties(0).total_memory/1024/1024)}') if torch.cuda.is_available() else print('NO')"])
+        .output()
+        .await
+    {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let trimmed = stdout.trim();
+            if trimmed != "NO" && trimmed.contains('|') {
+                let parts: Vec<&str> = trimmed.split('|').collect();
+                let name = parts[0].to_string();
+                let vram = parts.get(1).and_then(|v| v.parse::<u64>().ok());
+                return Json(SystemInfo {
+                    has_gpu: true,
+                    gpu_name: Some(name),
+                    vram_mb: vram,
+                });
+            }
+        }
+    }
+
+    Json(SystemInfo {
+        has_gpu: false,
+        gpu_name: None,
+        vram_mb: None,
+    })
+}
+
+// ----------------------------------------------------
+// Models Status & Local Model Downloader
+// ----------------------------------------------------
+
+pub fn check_ltx_installed(workspace_dir: &Path) -> (bool, u64, PathBuf) {
+    let mut candidates = vec![
+        workspace_dir.join("models").join("ltx-video"),
+        workspace_dir.join("models").join("LTX-Video"),
+        PathBuf::from("/workspace/models/ltx-video"),
+        PathBuf::from("/workspace/models/LTX-Video"),
+        workspace_dir.join(".hf_cache").join("hub").join("models--Lightricks--LTX-Video"),
+        PathBuf::from("/workspace/.hf_cache/hub/models--Lightricks--LTX-Video"),
+    ];
+
+    if let Ok(home) = std::env::var("HOME") {
+        candidates.push(PathBuf::from(home).join(".cache/huggingface/hub/models--Lightricks--LTX-Video"));
+    }
+
+    for candidate in &candidates {
+        if candidate.exists() {
+            let model_index = candidate.join("model_index.json");
+            let snapshots = candidate.join("snapshots");
+            if model_index.exists() || snapshots.exists() || candidate.join("transformer").exists() {
+                let size = get_dir_size(candidate);
+                if size > 100 * 1024 * 1024 {
+                    return (true, size, candidate.clone());
+                }
+            }
+        }
+    }
+
+    let default_dest = if Path::new("/workspace").exists() {
+        PathBuf::from("/workspace/models/ltx-video")
+    } else {
+        workspace_dir.join("models").join("ltx-video")
+    };
+
+    (false, 0, default_dest)
+}
+
+fn get_dir_size(path: &Path) -> u64 {
+    let mut total = 0;
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() {
+                if let Ok(meta) = p.metadata() {
+                    total += meta.len();
+                }
+            } else if p.is_dir() {
+                total += get_dir_size(&p);
+            }
+        }
+    }
+    total
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelItemInfo {
+    pub id: String,
+    pub name: String,
+    pub repo_id: String,
+    pub installed: bool,
+    pub size_gb: f64,
+    pub path: String,
+    pub requires_hf_token: bool,
+    pub license_url: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelsStatusResponse {
+    pub models: Vec<ModelItemInfo>,
+}
+
+async fn get_models_status(State(state): State<AppState>) -> Json<ModelsStatusResponse> {
+    let (ltx_installed, ltx_size, ltx_path) = check_ltx_installed(&state.workspace_dir);
+    let ltx_size_gb = (ltx_size as f64) / (1024.0 * 1024.0 * 1024.0);
+
+    let models = vec![
+        ModelItemInfo {
+            id: "ltx-video".to_string(),
+            name: "Lightricks LTX-Video 2.5".to_string(),
+            repo_id: "Lightricks/LTX-Video".to_string(),
+            installed: ltx_installed,
+            size_gb: (ltx_size_gb * 100.0).round() / 100.0,
+            path: ltx_path.to_string_lossy().to_string(),
+            requires_hf_token: true,
+            license_url: "https://huggingface.co/Lightricks/LTX-Video".to_string(),
+            description: "High-performance DiT video generation engine for Pod GPU (~11 GB)".to_string(),
+        },
+    ];
+
+    Json(ModelsStatusResponse { models })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DownloadModelPayload {
+    pub model_id: Option<String>,
+}
+
+async fn download_model(
+    State(state): State<AppState>,
+    Json(payload): Json<DownloadModelPayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let model_id_req = payload.model_id.unwrap_or_else(|| "ltx-video".to_string());
+
+    let (repo_id, target_dir) = if model_id_req.to_lowercase().contains("ltx") {
+        let (_, _, path) = check_ltx_installed(&state.workspace_dir);
+        ("Lightricks/LTX-Video".to_string(), path)
+    } else {
+        return Err(StatusCode::BAD_REQUEST);
+    };
+
+    // Check if download is already running
+    {
+        let jobs = state.jobs.lock().await;
+        if let Some(existing) = jobs.iter().find(|j| {
+            j.pipeline_type == "model_download" && j.status == "RUNNING"
+        }) {
+            return Ok(Json(serde_json::json!({
+                "job_id": existing.id,
+                "already_running": true,
+                "status": "RUNNING"
+            })));
+        }
+    }
+
+    let job_id = format!("dl_{}", rand::random::<u32>());
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let job = ServerJob {
+        id: job_id.clone(),
+        pipeline_type: "model_download".to_string(),
+        status: "RUNNING".to_string(),
+        prompt: Some(format!("Download {}", repo_id)),
+        source: None,
+        result_file: Some(target_dir.to_string_lossy().to_string()),
+        elapsed_seconds: 0,
+        created_at: now,
+        logs: vec![JobLog {
+            level: "info".to_string(),
+            message: format!("Starting download of {} to {}", repo_id, target_dir.display()),
+        }],
+        runpod_job_id: None,
+        runpod_status: None,
+        runpod_endpoint: None,
+        stage_info: Some("Initialisation...".to_string()),
+    };
+
+    {
+        let mut jobs = state.jobs.lock().await;
+        jobs.insert(0, job);
+    }
+
+    let state_clone = state.clone();
+    let job_id_clone = job_id.clone();
+    let repo_id_clone = repo_id.clone();
+    let target_dir_clone = target_dir.clone();
+
+    tokio::spawn(async move {
+        let start = Instant::now();
+        let hf_token = {
+            let s = state_clone.settings.lock().await;
+            s.hf_token.clone()
+        };
+
+        let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+        crate::utils::configure_python_command(&mut cmd);
+        let mut args = vec![
+            "src/model_downloader.py".to_string(),
+            "--model-id".to_string(),
+            repo_id_clone.clone(),
+            "--local-dir".to_string(),
+            target_dir_clone.to_string_lossy().to_string(),
+        ];
+        if !hf_token.trim().is_empty() {
+            args.push("--token".to_string());
+            args.push(hf_token.trim().to_string());
+        }
+        cmd.args(&args);
+
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let mut jobs = state_clone.jobs.lock().await;
+                if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Impossible de lancer le script model_downloader.py : {}", e),
+                    });
+                }
+                return;
+            }
+        };
+
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+
+        let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+        let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+        let mut stdout_done = false;
+        let mut stderr_done = false;
+
+        while !stdout_done || !stderr_done {
+            tokio::select! {
+                line = stdout_reader.next_line(), if !stdout_done => {
+                    match line {
+                        Ok(Some(l)) => {
+                            let line_str: String = l;
+                            let mut jobs = state_clone.jobs.lock().await;
+                            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+                                j.elapsed_seconds = start.elapsed().as_secs();
+                                if line_str.contains("[STATUS]") || line_str.contains("%|") {
+                                    j.stage_info = Some(line_str.clone());
+                                }
+                                j.logs.push(JobLog {
+                                    level: "info".to_string(),
+                                    message: line_str,
+                                });
+                            }
+                        }
+                        _ => stdout_done = true,
+                    }
+                }
+                line = stderr_reader.next_line(), if !stderr_done => {
+                    match line {
+                        Ok(Some(l)) => {
+                            let line_str: String = l;
+                            let mut jobs = state_clone.jobs.lock().await;
+                            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+                                j.logs.push(JobLog {
+                                    level: "warn".to_string(),
+                                    message: line_str,
+                                });
+                            }
+                        }
+                        _ => stderr_done = true,
+                    }
+                }
+            }
+        }
+
+        let status = child.wait().await;
+        let elapsed = start.elapsed().as_secs();
+
+        let mut jobs = state_clone.jobs.lock().await;
+        if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id_clone) {
+            j.elapsed_seconds = elapsed;
+            match status {
+                Ok(s) if s.success() => {
+                    j.status = "COMPLETED".to_string();
+                    j.stage_info = Some("Download completed successfully!".to_string());
+                    j.logs.push(JobLog {
+                        level: "success".to_string(),
+                        message: format!("🎉 Model {} downloaded successfully in {}s!", repo_id_clone, elapsed),
+                    });
+                }
+                Ok(s) => {
+                    j.status = "FAILED".to_string();
+                    let code = s.code().unwrap_or(-1);
+                    if code == 41 {
+                        j.stage_info = Some("Error 401: Invalid Hugging Face Token".to_string());
+                        j.logs.push(JobLog {
+                            level: "error".to_string(),
+                            message: "Invalid or expired Hugging Face access token (401). Please configure your token in Settings.".to_string(),
+                        });
+                    } else if code == 43 {
+                        j.stage_info = Some("Error 403: Hugging Face License required".to_string());
+                        j.logs.push(JobLog {
+                            level: "error".to_string(),
+                            message: format!("Access denied to gated model '{}'. Please accept terms on https://huggingface.co/{} then configure your token.", repo_id_clone, repo_id_clone),
+                        });
+                    } else {
+                        j.stage_info = Some("Download failed".to_string());
+                        j.logs.push(JobLog {
+                            level: "error".to_string(),
+                            message: format!("Download stopped with exit code {}", code),
+                        });
+                    }
+                }
+                Err(e) => {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("System error waiting for process: {}", e),
+                    });
+                }
+            }
+        }
+    });
+
+    Ok(Json(serde_json::json!({
+        "job_id": job_id,
+        "repo_id": repo_id,
+        "target_dir": target_dir.to_string_lossy().to_string(),
+        "status": "RUNNING"
+    })))
+}
+
+fn spawn_local_ltx_job(
+    state: AppState,
+    job_id: String,
+    prompt: String,
+    image_src: Option<String>,
+    output_file: String,
+    resolution: String,
+    duration: u32,
+) {
+    tokio::spawn(async move {
+        let start = Instant::now();
+        let (installed, _, model_path) = check_ltx_installed(&state.workspace_dir);
+        if !installed {
+            let mut jobs = state.jobs.lock().await;
+            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id) {
+                j.status = "FAILED".to_string();
+                j.logs.push(JobLog {
+                    level: "error".to_string(),
+                    message: "LTX-Video 2.5 model is not yet installed on this Pod GPU (~11 GB). Please download it first in Settings with your authorized Hugging Face token.".to_string(),
+                });
+            }
+            return;
+        }
+
+        let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+        crate::utils::configure_python_command(&mut cmd);
+        let out_file_path = state.workspace_dir.join(&output_file);
+        let mut args = vec![
+            "src/ltx_engine.py".to_string(),
+            "--prompt".to_string(),
+            prompt.clone(),
+            "--duration".to_string(),
+            duration.to_string(),
+            "--resolution".to_string(),
+            resolution.clone(),
+            "--output".to_string(),
+            out_file_path.to_string_lossy().to_string(),
+            "--model-id".to_string(),
+            model_path.to_string_lossy().to_string(),
+        ];
+        if let Some(ref img) = image_src {
+            let img_path = state.workspace_dir.join(img);
+            let img_str = if img_path.exists() {
+                img_path.to_string_lossy().to_string()
+            } else {
+                img.clone()
+            };
+            args.push("--image".to_string());
+            args.push(img_str);
+        }
+        cmd.args(&args);
+
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let mut jobs = state.jobs.lock().await;
+                if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id) {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Failed to start ltx_engine.py: {}", e),
+                    });
+                }
+                return;
+            }
+        };
+
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+
+        let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+        let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+        let mut stdout_done = false;
+        let mut stderr_done = false;
+
+        while !stdout_done || !stderr_done {
+            tokio::select! {
+                line = stdout_reader.next_line(), if !stdout_done => {
+                    match line {
+                        Ok(Some(l)) => {
+                            let line_str: String = l;
+                            let mut jobs = state.jobs.lock().await;
+                            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id) {
+                                j.elapsed_seconds = start.elapsed().as_secs();
+                                if line_str.starts_with("[STATUS]") || line_str.starts_with("[INFO]") {
+                                    j.stage_info = Some(line_str.clone());
+                                }
+                                j.logs.push(JobLog {
+                                    level: "info".to_string(),
+                                    message: line_str,
+                                });
+                            }
+                        }
+                        _ => stdout_done = true,
+                    }
+                }
+                line = stderr_reader.next_line(), if !stderr_done => {
+                    match line {
+                        Ok(Some(l)) => {
+                            let line_str: String = l;
+                            let mut jobs = state.jobs.lock().await;
+                            if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id) {
+                                j.logs.push(JobLog {
+                                    level: "warn".to_string(),
+                                    message: line_str,
+                                });
+                            }
+                        }
+                        _ => stderr_done = true,
+                    }
+                }
+            }
+        }
+
+        let status = child.wait().await;
+        let elapsed = start.elapsed().as_secs();
+
+        let mut jobs = state.jobs.lock().await;
+        if let Some(j) = jobs.iter_mut().find(|job| job.id == job_id) {
+            j.elapsed_seconds = elapsed;
+            match status {
+                Ok(s) if s.success() => {
+                    j.status = "COMPLETED".to_string();
+                    j.stage_info = Some("LTX-Video generation completed successfully!".to_string());
+                    j.logs.push(JobLog {
+                        level: "success".to_string(),
+                        message: format!("🎉 LTX-Video 2.5 video generated successfully on Pod GPU in {}s!", elapsed),
+                    });
+                }
+                Ok(s) => {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("LTX-Video engine exited with code {:?}", s.code()),
+                    });
+                }
+                Err(e) => {
+                    j.status = "FAILED".to_string();
+                    j.logs.push(JobLog {
+                        level: "error".to_string(),
+                        message: format!("Error waiting for LTX-Video process: {}", e),
+                    });
+                }
+            }
+        }
+    });
+}
+
 
 // ----------------------------------------------------
 // Pipeline Execution Handlers
@@ -883,6 +1464,19 @@ async fn generate_txt2vid(
         jobs.insert(0, job);
     }
 
+    if video_model == crate::models::VideoModel::Ltx2_5 {
+        spawn_local_ltx_job(
+            state,
+            job_id.clone(),
+            payload.prompt,
+            None,
+            output_file,
+            payload.resolution.unwrap_or_else(|| "720p".to_string()),
+            payload.duration.unwrap_or(5),
+        );
+        return Ok(Json(serde_json::json!({ "id": job_id })));
+    }
+
     let state_clone = state.clone();
     let job_id_clone = job_id.clone();
     let output_file_clone = output_file.clone();
@@ -943,14 +1537,14 @@ async fn generate_txt2vid(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Vidéo générée avec succès en {}s !", elapsed),
+                        message: format!("Video generated successfully in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur lors de la génération : {:#}", e),
+                        message: format!("Generation error: {:#}", e),
                     });
                 }
             }
@@ -1023,6 +1617,19 @@ async fn generate_img2vid(
         jobs.insert(0, job);
     }
 
+    if video_model == crate::models::VideoModel::Ltx2_5 {
+        spawn_local_ltx_job(
+            state,
+            job_id.clone(),
+            payload.prompt.unwrap_or_else(|| "Cinematic smooth motion, natural camera movement, high quality".to_string()),
+            Some(image_src),
+            output_file,
+            payload.resolution.unwrap_or_else(|| "720p".to_string()),
+            payload.duration.unwrap_or(5),
+        );
+        return Ok(Json(serde_json::json!({ "id": job_id })));
+    }
+
     let state_clone = state.clone();
     let job_id_clone = job_id.clone();
     let output_file_clone = output_file.clone();
@@ -1067,7 +1674,7 @@ async fn generate_img2vid(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Animation terminée avec succès en {}s !", elapsed),
+                        message: format!("Animation completed successfully in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
@@ -1190,7 +1797,7 @@ async fn generate_faceswap(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Face Swap terminé avec succès en {}s !", elapsed),
+                        message: format!("Face Swap completed successfully in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
@@ -1310,7 +1917,7 @@ async fn generate_vid2vid(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Transformation Vid2Vid terminée en {}s !", elapsed),
+                        message: format!("Vid2Vid transformation completed in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
@@ -1373,7 +1980,7 @@ async fn generate_txt2img(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Génération Flux: '{}'", payload.prompt),
+            message: format!("Flux generation: '{}'", payload.prompt),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -1445,7 +2052,7 @@ async fn generate_txt2img(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Image générée avec succès en {}s !", elapsed),
+                        message: format!("Image generated successfully in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
@@ -1513,9 +2120,9 @@ async fn generate_img2img(
         logs: vec![JobLog {
             level: "info".to_string(),
             message: if is_inpaint {
-                format!("Inpainting (Masqué) depuis '{}' : '{}'", payload.image, payload.prompt)
+                format!("Inpainting (Masked) from '{}': '{}'", payload.image, payload.prompt)
             } else {
-                format!("Génération Image-to-Image depuis '{}' : '{}'", payload.image, payload.prompt)
+                format!("Image-to-Image generation from '{}': '{}'", payload.image, payload.prompt)
             },
         }],
         runpod_job_id: None,
@@ -1597,7 +2204,7 @@ async fn generate_img2img(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Image-to-Image générée avec succès en {}s !", elapsed),
+                        message: format!("Image-to-Image generated successfully in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
@@ -1745,7 +2352,7 @@ async fn generate_tts(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("Audio TTS généré avec succès en {}s !", elapsed),
+                        message: format!("TTS audio generated successfully in {}s!", elapsed),
                     });
                 }
                 Err(e) => {
@@ -2047,7 +2654,7 @@ async fn start_lora_training(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Démarrage de l'entraînement LoRA '{}' sur le dataset '{}' ({} steps)", output_name, sanitized_dataset, steps),
+            message: format!("Starting LoRA training '{}' on dataset '{}' ({} steps)", output_name, sanitized_dataset, steps),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -2096,7 +2703,7 @@ async fn start_lora_training(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Impossible de démarrer le script lora_train_engine.py : {}", e),
+                        message: format!("Failed to start lora_train_engine.py: {}", e),
                     });
                 }
                 return;
@@ -2167,21 +2774,21 @@ async fn start_lora_training(
                     j.status = "COMPLETED".to_string();
                     j.logs.push(JobLog {
                         level: "success".to_string(),
-                        message: format!("🎉 Entraînement LoRA terminé avec succès en {}s ! Fichier enregistré dans loras/{}", elapsed, out_name_clone),
+                        message: format!("🎉 LoRA training completed successfully in {}s! File saved to loras/{}", elapsed, out_name_clone),
                     });
                 }
                 Ok(s) => {
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Le processus d'entraînement s'est arrêté avec le code {:?}", s.code()),
+                        message: format!("Training process exited with code {:?}", s.code()),
                     });
                 }
                 Err(e) => {
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur d'attente du processus : {}", e),
+                        message: format!("System error waiting for process: {}", e),
                     });
                 }
             }

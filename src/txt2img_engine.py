@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 High-Performance Local Text-to-Image Engine using PyTorch & HuggingFace Diffusers.
-Optimized for 8GB VRAM GPUs (e.g. RTX 2080) with FP16, VAE slicing, and CPU offload support.
+Optimized for CUDA / Pod GPUs with FP16, VAE slicing, and CPU offload support.
 """
 
 import os
@@ -257,7 +257,7 @@ def main():
         else:
             print(f"[WARN] Specified LoRA file '{lora_target}' was not found.", file=sys.stderr)
 
-    # Memory optimizations for 8GB VRAM GPUs (RTX 2080)
+    # Memory optimizations for CUDA GPUs
     if device == "cuda":
         try:
             pipe.enable_model_cpu_offload()

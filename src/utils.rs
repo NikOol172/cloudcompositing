@@ -47,6 +47,12 @@ pub fn configure_python_command(cmd: &mut tokio::process::Command) {
     cmd.env("COQUI_TOS_AGREED", "1");
     cmd.env("SAFETENSORS_BACKEND", "pread");
     cmd.env("HF_HUB_DISABLE_SYMLINKS_WARNING", "1");
+    if let Ok(tok) = std::env::var("HF_TOKEN") {
+        if !tok.trim().is_empty() {
+            cmd.env("HF_TOKEN", tok.trim());
+            cmd.env("HUGGINGFACE_HUB_TOKEN", tok.trim());
+        }
+    }
 }
 
 /// Convertit un fichier image local en Data URI standard (`data:image/png;base64,...`).
