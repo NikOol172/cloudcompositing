@@ -347,12 +347,12 @@ pub struct FaceSwapArgs {
 
 #[derive(Args, Debug)]
 pub struct ServeArgs {
-    /// Port d'écoute du serveur web local.
+    /// Web server listening port.
     #[arg(short, long, default_value_t = 3000)]
     pub port: u16,
 
-    /// Ouvrir automatiquement le navigateur par défaut.
-    #[arg(long, default_value_t = true)]
+    /// Automatically open default browser (optional: true/false).
+    #[arg(long, default_value = "false", default_missing_value = "true", num_args = 0..=1, action = clap::ArgAction::Set)]
     pub open: bool,
 }
 

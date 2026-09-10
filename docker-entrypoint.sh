@@ -10,9 +10,8 @@ echo "🌐 HTTP Listening Port : ${PORT}"
 echo "📁 Working Directory   : $(pwd)"
 echo "========================================================"
 
-# Support du volume persistant /workspace de RunPod
-# Si /workspace existe (point de montage standard RunPod), on s'y place
-# pour que tous les médias générés et datasets soient persistés.
+# RunPod persistent volume support (/workspace)
+# If /workspace exists, symlink web assets so files and datasets persist across restarts.
 if [ -d "/workspace" ]; then
     cd /workspace
     [ ! -e "web" ] && ln -s /app/web web
@@ -21,5 +20,5 @@ else
     cd /app
 fi
 
-# Exécution du serveur Rust sans tenter d'ouvrir de navigateur graphique (headless)
-exec /app/runpod-pipeline serve --port "$PORT" --open false
+# Execute Rust server in headless mode
+exec /app/runpod-pipeline serve --port "$PORT"
