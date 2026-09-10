@@ -70,21 +70,31 @@ The compiled binary will be located at `target/release/runpod-pipeline`.
 
 ## 🐳 Docker & RunPod Cloud Deployment
 
-RunPod Studio is packaged as a ready-to-run container image with CUDA 12.1 and PyTorch pre-installed:
+RunPod Studio provides two specialized container images:
+- **GPU Edition** (`ghcr.io/nikool172/cloudcompositing:v1.0.0-gpu` or `:latest-gpu`): Full environment with CUDA 12.1, PyTorch GPU, ONNX Runtime GPU, Diffusers, and local model inference capabilities.
+- **CPU Edition** (`ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu` or `:latest-cpu`): Lightweight container (~1.5 GB) designed for affordable RunPod CPU Pods ($0.02–$0.05/hr) acting as a cloud orchestrator for Serverless APIs and lightweight local CPU tasks (Kokoro TTS).
 
 ```bash
-# Pull the public container image
-docker pull ghcr.io/nikool172/cloudcompositing:latest
+# Pull the GPU container image
+docker pull ghcr.io/nikool172/cloudcompositing:v1.0.0-gpu
 
 # Run locally with GPU support
-docker run --gpus all -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcompositing:latest
+docker run --gpus all -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcompositing:v1.0.0-gpu
+
+# Or pull the lightweight CPU container image
+docker pull ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu
+docker run -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu
 ```
 
 ### Deploying as a 1-Click RunPod Template
+
+#### Option A: GPU Template (Local Model Inference & AI Studio)
 1. In the **RunPod Console** → **Templates** → **New Template**:
-   - **Image Name**: `ghcr.io/nikool172/cloudcompositing:latest`
+   - **Template Name**: `RunPod Studio (GPU)`
+   - **Compute Type**: `GPU`
+   - **Image Name**: `ghcr.io/nikool172/cloudcompositing:v1.0.0-gpu`
    - **Container Disk**: `30 GB`
-   - **Volume Disk**: `20+ GB` (mounted to `/app/outputs`)
+   - **Volume Disk**: `20+ GB` (mount to `/workspace` or `/app/outputs`)
    - **Expose HTTP Ports**: `3000`
    - **Environment Variables**:
      - `PORT` = `3000`
@@ -92,6 +102,19 @@ docker run --gpus all -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool17
      - `HF_TOKEN` = `your_huggingface_token` (optional, for LTX-Video)
 2. Deploy on any GPU pod (e.g. RTX 4090, A40, L40S).
 3. Click **Connect → Connect to HTTP Service [Port 3000]** to launch the Studio.
+
+#### Option B: CPU Template (Ultra-low cost API Orchestrator)
+1. In the **RunPod Console** → **Templates** → **New Template**:
+   - **Template Name**: `RunPod Studio (CPU Light)`
+   - **Compute Type**: `CPU`
+   - **Image Name**: `ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu`
+   - **Container Disk**: `10 GB`
+   - **Expose HTTP Ports**: `3000`
+   - **Environment Variables**:
+     - `PORT` = `3000`
+     - `RUNPOD_API_KEY` = `your_runpod_api_key`
+2. Deploy on any RunPod CPU pod (~$0.02/hour).
+3. Click **Connect → Connect to HTTP Service [Port 3000]**.
 
 ---
 

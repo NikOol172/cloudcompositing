@@ -1,4 +1,4 @@
-name: Build and Publish Docker Image
+name: Build and Publish Docker Images
 
 on:
   push:
@@ -12,7 +12,20 @@ permissions:
 
 jobs:
   build-and-push:
+    name: Build & Push (${{ matrix.flavor }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flavor: gpu
+            file: ./Dockerfile
+            suffix: -gpu
+            is_default: true
+          - flavor: cpu
+            file: ./Dockerfile.cpu
+            suffix: -cpu
+            is_default: false
 
     steps:
       - name: Checkout repository
@@ -33,18 +46,24 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=false
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=ref,event=branch,suffix=${{ matrix.suffix }}
+            type=semver,pattern=v{{version}},suffix=${{ matrix.suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.suffix }}
+            type=semver,pattern=v{{version}},enable=${{ matrix.is_default }}
+            type=semver,pattern={{version}},enable=${{ matrix.is_default }}
+            type=raw,value=latest${{ matrix.suffix }},enable=${{ startsWith(github.ref, 'refs/tags/v') || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=latest,enable=${{ matrix.is_default && (startsWith(github.ref, 'refs/tags/v') || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ${{ matrix.file }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.flavor }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavor }}

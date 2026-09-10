@@ -1,0 +1,21 @@
+# RunPod Studio - CPU Dependencies
+# PyTorch CPU is pre-installed via https://download.pytorch.org/whl/cpu in Dockerfile.cpu
+
+# HuggingFace & Utilities
+transformers>=4.40.0
+accelerate>=0.29.0
+safetensors>=0.4.0
+huggingface_hub>=0.23.0
+sentencepiece>=0.1.99
+
+# ONNX Runtime CPU & FaceSwap
+onnxruntime>=1.17.0
+insightface>=0.7.3
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# Lightweight Local TTS (Kokoro 82M CPU)
+soundfile>=0.12.1
+scipy>=1.11.0
+kokoro>=0.8.4

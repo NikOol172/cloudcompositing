@@ -1,0 +1,70 @@
+# ==============================================================================
+# Stage 1: Build Rust binary (RunPod Pipeline & Web Server)
+# ==============================================================================
+FROM rust:latest AS builder
+
+WORKDIR /usr/src/app
+
+# Native C/C++ compilation toolchain for ring and native dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    cmake \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Rust manifest and lockfile
+COPY Cargo.toml Cargo.lock ./
+
+# Source code
+COPY src/ ./src/
+
+# Release compilation
+RUN cargo build --release --bin runpod-pipeline
+
+# ==============================================================================
+# Stage 2: Lightweight CPU Runtime (RunPod Web Studio & Cloud AI Orchestrator)
+# ==============================================================================
+FROM python:3.10-slim-bookworm
+
+LABEL maintainer="NikOol172"
+LABEL description="RunPod Studio (CPU Version) - Web Interface & Cloud AI Orchestrator"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PORT=3000
+
+WORKDIR /app
+
+# System dependencies for audio, image processing, and runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    ffmpeg \
+    libsndfile1 \
+    git \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PyTorch CPU wheels followed by CPU requirements
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+COPY requirements-cpu.txt /app/
+RUN pip install --no-cache-dir -r requirements-cpu.txt
+
+# Copy compiled Rust binary
+COPY --from=builder /usr/src/app/target/release/runpod-pipeline /app/runpod-pipeline
+
+# Copy web assets and source scripts
+COPY web/ /app/web/
+COPY src/ /app/src/
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
+RUN chmod +x /app/docker-entrypoint.sh /app/runpod-pipeline
+
+EXPOSE 3000
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

@@ -5,9 +5,9 @@ set -e
 PORT="${PORT:-3000}"
 
 echo "========================================================"
-echo "⚡ Bienvenue sur RunPod Studio & Media Manager"
-echo "🌐 Port d'écoute HTTP : ${PORT}"
-echo "📁 Répertoire de travail : $(pwd)"
+echo "⚡ Welcome to RunPod Studio & Media Manager"
+echo "🌐 HTTP Listening Port : ${PORT}"
+echo "📁 Working Directory   : $(pwd)"
 echo "========================================================"
 
 # Support du volume persistant /workspace de RunPod
