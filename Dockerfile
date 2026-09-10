@@ -1,26 +1,34 @@
 # ==============================================================================
-# Étape 1 : Compilation du binaire Rust (RunPod Pipeline & Web Server)
+# Stage 1: Build Rust binary on Ubuntu 22.04 (guarantees GLIBC 2.35 compatibility)
 # ==============================================================================
-FROM rust:latest AS builder
+FROM ubuntu:22.04 AS builder
 
 WORKDIR /usr/src/app
 
-# Installation de la suite de compilation C / C++ requise pour ring et extensions natives
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install C/C++ compilation toolchain and curl for rustup
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     pkg-config \
     libssl-dev \
     cmake \
     git \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copie des fichiers de configuration Rust
+# Install Rust toolchain
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Copy Rust configuration
 COPY Cargo.toml Cargo.lock ./
 
-# Copie du code source
+# Copy source code
 COPY src/ ./src/
 
-# Compilation en mode release optimisé
+# Compile optimized release binary
 RUN cargo build --release --bin runpod-pipeline
 
 # ==============================================================================

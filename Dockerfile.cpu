@@ -1,9 +1,11 @@
 # ==============================================================================
-# Stage 1: Build Rust binary (RunPod Pipeline & Web Server)
+# Stage 1: Build Rust binary on Ubuntu 22.04 (guarantees GLIBC 2.35 compatibility)
 # ==============================================================================
-FROM rust:latest AS builder
+FROM ubuntu:22.04 AS builder
 
 WORKDIR /usr/src/app
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Native C/C++ compilation toolchain for ring and native dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,7 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     cmake \
     git \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Rust manifest and lockfile
 COPY Cargo.toml Cargo.lock ./
@@ -26,7 +34,7 @@ RUN cargo build --release --bin runpod-pipeline
 # ==============================================================================
 # Stage 2: Lightweight CPU Runtime (RunPod Web Studio & Cloud AI Orchestrator)
 # ==============================================================================
-FROM python:3.10-slim-bookworm
+FROM ubuntu:22.04
 
 LABEL maintainer="NikOol172"
 LABEL description="RunPod Studio (CPU Version) - Web Interface & Cloud AI Orchestrator"
@@ -37,16 +45,20 @@ ENV PORT=3000
 
 WORKDIR /app
 
-# System dependencies for audio, image processing, and runtime
+# System dependencies: Python 3.10, FFmpeg, audio libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    python3 \
+    python3-pip \
     python3-dev \
+    build-essential \
     ffmpeg \
     libsndfile1 \
     git \
     curl \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # Install PyTorch CPU wheels followed by CPU requirements
 RUN pip install --no-cache-dir --upgrade pip && \
