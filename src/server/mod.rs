@@ -247,7 +247,7 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
 }
 
 async fn serve_embedded_fallback() -> impl IntoResponse {
-    Html("<!DOCTYPE html><html><body><h1>RunPod Studio</h1><p>Dossier web introuvable.</p></body></html>")
+    Html("<!DOCTYPE html><html><body><h1>RunPod Studio</h1><p>Web folder not found.</p></body></html>")
 }
 
 // ----------------------------------------------------
@@ -592,7 +592,7 @@ async fn crop_media(
     let output = cmd.output().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Erreur FFmpeg crop: {}", err);
+        eprintln!("FFmpeg crop error: {}", err);
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -625,11 +625,11 @@ fn create_client_with_tracking(state: AppState, job_id: String, api_key: String,
 
                 if is_new_status {
                     let msg = match st.as_str() {
-                        "IN_QUEUE" => format!("⏳ Job RunPod ({}) en file d'attente...", r_id),
-                        "IN_PROGRESS" => format!("⚡ GPU actif : traitement en cours sur '{}' ({})", ep, r_id),
+                        "IN_QUEUE" => format!("⏳ RunPod Job ({}) queued...", r_id),
+                        "IN_PROGRESS" => format!("⚡ GPU Active: processing on '{}' ({})", ep, r_id),
                         "COMPLETED" => format!("✓ RunPod GPU processing completed successfully ({})", r_id),
                         "FAILED" => format!("❌ RunPod worker failed ({})", r_id),
-                        _ => format!("ℹ️ Statut RunPod : {}", st),
+                        _ => format!("ℹ️ RunPod Status: {}", st),
                     };
                     j.logs.push(JobLog {
                         level: if st == "COMPLETED" { "success".to_string() } else if st == "FAILED" { "error".to_string() } else { "info".to_string() },
@@ -1084,7 +1084,7 @@ async fn download_model(
         runpod_job_id: None,
         runpod_status: None,
         runpod_endpoint: None,
-        stage_info: Some("Initialisation...".to_string()),
+        stage_info: Some("Initializing...".to_string()),
     };
 
     {
@@ -1451,7 +1451,7 @@ async fn generate_txt2vid(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Initialisation Text-to-Video [Flux + {}] : '{}'", video_model.display_name(), prompt_clone),
+            message: format!("Initializing Text-to-Video [Flux + {}]: '{}'", video_model.display_name(), prompt_clone),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -1604,7 +1604,7 @@ async fn generate_img2vid(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Animation Image-to-Video [{}] depuis '{}'", video_model.display_name(), image_src),
+            message: format!("Initializing Image-to-Video [{}] from '{}'", video_model.display_name(), image_src),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -1681,7 +1681,7 @@ async fn generate_img2vid(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur : {:#}", e),
+                        message: format!("Error: {:#}", e),
                     });
                 }
             }
@@ -1740,7 +1740,7 @@ async fn generate_faceswap(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Face Swap de '{}' sur '{}'", payload.source, payload.target),
+            message: format!("Initializing Face Swap from '{}' onto '{}'", payload.source, payload.target),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -1804,7 +1804,7 @@ async fn generate_faceswap(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur : {:#}", e),
+                        message: format!("Error: {:#}", e),
                     });
                 }
             }
@@ -1860,7 +1860,7 @@ async fn generate_vid2vid(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Restyling Vid2Vid [{}] sur '{}'", video_model.display_name(), payload.video),
+            message: format!("Initializing Vid2Vid [{}] on '{}'", video_model.display_name(), payload.video),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -1924,7 +1924,7 @@ async fn generate_vid2vid(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur : {:#}", e),
+                        message: format!("Error: {:#}", e),
                     });
                 }
             }
@@ -1980,7 +1980,7 @@ async fn generate_txt2img(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Flux generation: '{}'", payload.prompt),
+            message: format!("Initializing Text-to-Image (Flux): '{}'", payload.prompt),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -2059,7 +2059,7 @@ async fn generate_txt2img(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur : {:#}", e),
+                        message: format!("Error: {:#}", e),
                     });
                 }
             }
@@ -2211,7 +2211,7 @@ async fn generate_img2img(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur : {:#}", e),
+                        message: format!("Error: {:#}", e),
                     });
                 }
             }
@@ -2304,7 +2304,7 @@ async fn generate_tts(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Initialisation Text-to-Speech [{}] : '{}'", engine.to_uppercase(), text_clone),
+            message: format!("Initializing Text-to-Speech [{}]: '{}'", engine.to_uppercase(), text_clone),
         }],
         runpod_job_id: None,
         runpod_status: None,
@@ -2359,7 +2359,7 @@ async fn generate_tts(
                     j.status = "FAILED".to_string();
                     j.logs.push(JobLog {
                         level: "error".to_string(),
-                        message: format!("Erreur : {:#}", e),
+                        message: format!("Error: {:#}", e),
                     });
                 }
             }

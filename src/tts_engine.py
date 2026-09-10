@@ -94,22 +94,22 @@ def resolve_device(device_arg: str):
         return "cpu"
 
 def run_kokoro(text: str, output: str, voice: str, language: str, speed: float, device: str):
-    print(f"[*] Initialisation du moteur Kokoro-82M (Device: {device})...")
+    print(f"[*] Initializing Kokoro-82M engine (Device: {device})...")
     start_time = time.time()
 
     try:
         import soundfile as sf
         import numpy as np
     except ImportError as e:
-        print(f"[ERREUR] Dépendance audio manquante: {e}")
-        print("Veuillez installer: pip install soundfile numpy scipy")
+        print(f"[ERROR] Missing audio dependency: {e}")
+        print("Please install: pip install soundfile numpy scipy")
         sys.exit(1)
 
     try:
         from kokoro import KPipeline
     except ImportError:
-        print("[ERREUR] Le package 'kokoro' n'est pas encore installé.")
-        print("Veuillez exécuter: pip install kokoro soundfile scipy")
+        print("[ERROR] Package 'kokoro' is not installed.")
+        print("Please install: pip install kokoro soundfile scipy")
         sys.exit(1)
 
     # Lang code mapping for Kokoro:
@@ -138,32 +138,26 @@ def run_kokoro(text: str, output: str, voice: str, language: str, speed: float, 
         default_voice = "zf_xiaobei"
     else: # default American English
         lang_code = "a"
-        default_voice = "af_bella"
+        default_voice = "af_heart"
 
     chosen_voice = voice if voice and voice.strip() else default_voice
+    pipeline = KPipeline(lang_code=lang_code, device=device)
 
-    print(f"[*] Langue: '{lang_lower}' (Code: '{lang_code}'), Voix: '{chosen_voice}', Vitesse: {speed}x")
+    print(f"[*] Kokoro-82M: Voice '{chosen_voice}', Lang '{lang_code}', Speed {speed}x")
+    print(f"[*] Generating audio...")
 
-    pipeline = KPipeline(lang_code=lang_code)
-
-    generator = pipeline(
-        text,
-        voice=chosen_voice,
-        speed=speed,
-        split_pattern=r"\n+",
-    )
-
-    all_audio = []
+    generator = pipeline(text, voice=chosen_voice, speed=speed, split_pattern=r'\n+')
+    audio_chunks = []
     sample_rate = 24000
 
     for i, (gs, ps, audio) in enumerate(generator):
         if audio is not None and len(audio) > 0:
-            all_audio.append(audio)
+            audio_chunks.append(audio)
 
-    if not all_audio:
-        raise RuntimeError("Kokoro n'a produit aucun segment audio pour le texte fourni.")
+    if not audio_chunks:
+        raise RuntimeError("No audio could be synthesized by Kokoro.")
 
-    concatenated = np.concatenate(all_audio)
+    concatenated = np.concatenate(audio_chunks)
     
     # Ensure directory exists
     out_dir = os.path.dirname(os.path.abspath(output))
@@ -173,17 +167,17 @@ def run_kokoro(text: str, output: str, voice: str, language: str, speed: float, 
     sf.write(output, concatenated, sample_rate)
     duration = len(concatenated) / sample_rate
     elapsed = time.time() - start_time
-    print(f"[+] Audio généré avec succès en {elapsed:.2f}s ! Durée: {duration:.2f}s -> {output}")
+    print(f"[+] Audio generated successfully in {elapsed:.2f}s! Duration: {duration:.2f}s -> {output}")
 
 def run_xtts(text: str, output: str, voice: str, speaker_wav: str, language: str, speed: float, device: str):
-    print(f"[*] Initialisation du moteur Coqui XTTS-v2 (Device: {device})...")
+    print(f"[*] Initializing Coqui XTTS-v2 engine (Device: {device})...")
     start_time = time.time()
 
     try:
         from TTS.api import TTS
     except ImportError:
-        print("[ERREUR] Le package 'coqui-tts' n'est pas installé.")
-        print("Veuillez installer Coqui TTS via: pip install coqui-tts torchaudio")
+        print("[ERROR] Package 'coqui-tts' is not installed.")
+        print("Please install Coqui TTS: pip install coqui-tts torchaudio")
         sys.exit(1)
 
     import torch
@@ -209,7 +203,7 @@ def run_xtts(text: str, output: str, voice: str, speaker_wav: str, language: str
         "hu": "hu", "hungarian": "hu",
         "hi": "hi", "hindi": "hi",
     }
-    xtts_lang = lang_map.get(lang_lower, "fr")
+    xtts_lang = lang_map.get(lang_lower, "en")
 
     # Load XTTS-v2 model
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
@@ -222,8 +216,8 @@ def run_xtts(text: str, output: str, voice: str, speaker_wav: str, language: str
         os.makedirs(out_dir, exist_ok=True)
 
     if speaker_wav and os.path.exists(speaker_wav):
-        print(f"[*] Clonage vocal par référence audio : '{speaker_wav}'")
-        print(f"[*] Langue: '{xtts_lang}', Vitesse: {speed}x")
+        print(f"[*] Voice cloning via audio reference: '{speaker_wav}'")
+        print(f"[*] Language: '{xtts_lang}', Speed: {speed}x")
         tts.tts_to_file(
             text=text,
             speaker_wav=speaker_wav,
@@ -236,13 +230,13 @@ def run_xtts(text: str, output: str, voice: str, speaker_wav: str, language: str
         speaker_name = voice if voice and voice.strip() else None
         if not speaker_name and hasattr(tts, "speakers") and tts.speakers:
             speaker_name = tts.speakers[0]
-            print(f"[*] Aucune référence audio fournie, utilisation de la voix intégrée: '{speaker_name}'")
+            print(f"[*] No audio reference provided, using built-in voice: '{speaker_name}'")
         elif speaker_name:
-            print(f"[*] Utilisation de la voix intégrée : '{speaker_name}'")
+            print(f"[*] Using built-in voice: '{speaker_name}'")
         else:
             raise ValueError(
-                "Pour XTTS-v2, veuillez spécifier soit un fichier audio de référence (--speaker-wav), "
-                "soit une voix intégrée (--voice)."
+                "For XTTS-v2, please specify either a reference audio file (--speaker-wav), "
+                "or a built-in voice (--voice)."
             )
 
         tts.tts_to_file(
@@ -254,18 +248,18 @@ def run_xtts(text: str, output: str, voice: str, speaker_wav: str, language: str
         )
 
     elapsed = time.time() - start_time
-    print(f"[+] Audio généré avec succès en {elapsed:.2f}s ! -> {output}")
+    print(f"[+] Audio generated successfully in {elapsed:.2f}s! -> {output}")
 
 def main():
     args = parse_args()
     device = resolve_device(args.device)
 
     print(f"==================================================")
-    print(f"🎙️ Moteur TTS RunPod Studio")
-    print(f" • Moteur    : {args.engine.upper()}")
-    print(f" • Langue    : {args.language}")
-    print(f" • Voix/Ref  : {args.voice or args.speaker_wav or 'Défaut'}")
-    print(f" • Sortie    : {args.output}")
+    print(f"🎙️ RunPod Studio TTS Engine")
+    print(f" • Engine    : {args.engine.upper()}")
+    print(f" • Language  : {args.language}")
+    print(f" • Voice/Ref : {args.voice or args.speaker_wav or 'Default'}")
+    print(f" • Output    : {args.output}")
     print(f" • Device    : {device.upper()}")
     print(f"==================================================")
 
