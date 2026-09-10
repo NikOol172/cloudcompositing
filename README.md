@@ -1,247 +1,311 @@
-# RunPod Pipeline (Rust) 🦀⚡
+# RunPod Studio (Rust) 🦀⚡
 
-Application Rust modulaire et asynchrone pour orchestrer des pipelines d'IA générative sur **RunPod Serverless** et **Public Endpoints** (Text-to-Image, Image-to-Video, Text-to-Video complet, enrichissement LLM de prompts).
-
----
-
-## 🌟 Fonctionnalités
-
-- **Interface Web Studio & Gestionnaire de Médias (`serve` / `ui`)** :
-  - **Tableau de bord visuel interactif** complet pour lancer toutes les générations (Text-to-Video, Image-to-Video, Face Swap, Video-to-Video, Text-to-Image, Prompt Enhancer).
-  - **Gestionnaire de médias intégré** : Galerie d'images et vidéos, lecteur vidéo intégré, import par glisser-déposer (Drag & Drop), téléchargement, suppression et réutilisation de médias comme source en 1 clic.
-  - **Suivi des jobs en temps réel** avec logs d'exécution et prévisualisation directe.
-- **Multi-modèles Vidéo de pointe (`wan-2-5`, `ltx-2-5`, `minimax-h3`)** :
-  - **Wan 2.5** (`wan-2-5`) : Moteur de référence haute fluidité et cohérence temporelle.
-  - **LTX-Video 2.5** (`ltx-2-5`) : Architecture DiT ultra-rapide conçue pour des temps d'inférence records.
-  - **MiniMax-H3 / Hailuo 3** (`minimax-h3`) : Génération cinématique 2K haute fidélité avec audio synchronisé.
-  - Sélectionnable directement dans l'interface Web Studio ou via le flag CLI `--model <wan-2-5|ltx-2-5|minimax-h3>`.
-- **Image-to-Video (`img2vid`)** :
-  - Accepte des **fichiers locaux** (`.png`, `.jpg`, `.webp`) automatiquement encodés en Data-URI (base64) ou des **URLs distantes**.
-  - Génère des vidéos de qualité via le moteur de votre choix (**Wan 2.5**, **LTX-Video 2.5**, **MiniMax-H3**).
-- **Video-to-Video (`vid2vid`)** :
-  - Restyler, transformer ou modifier une vidéo existante (`.mp4`, `.webm` ou URL) avec contrôle de la force de transformation (`--strength`).
-- **Face Swap (`faceswap`)** :
-  - Remplacer un visage sur une **image** ou une **vidéo** à partir d'une photo source avec restauration automatique haute fidélité (*CodeFormer / GFPGAN*).
-- **Text-to-Video complet (`txt2vid`)** :
-  - Enchaîne optionnellement l'enrichissement de prompt (Qwen3), la génération d'image haute fidélité (**Flux 1 Schnell / Dev**) et l'animation vidéo (**Wan 2.5**, **LTX-Video 2.5**, **MiniMax-H3**).
-  - Mode interactif (`-i / --interactive`) permettant d'ouvrir et de valider l'image avant de lancer le rendu vidéo.
-- **Image-to-Image (`img2img`)** :
-  - Transformer, restyler ou générer une nouvelle scène à partir d'une image de référence (ex: transformer une photo de chaussettes en joueuse de pickleball en pleine action) avec contrôle précis du degré de transformation (`--strength` / denoise).
-  - Prise en charge sur le **Cloud RunPod (Flux / SDXL)** et en **Local GPU (Diffusers / RTX 2080)**.
-- **Text-to-Image (`txt2img`)** :
-  - Génération rapide d'images avec personnalisation des dimensions, du seed et des steps.
-- **Studio d'Entraînement LoRA (`train-lora` / Web Studio)** :
-  - Fine-tuning de concepts personnalisés (visages, produits commerciaux, styles artistiques) directement sur GPU local (RTX 2080 8 Go).
-  - Gestionnaire complet de datasets avec drag & drop d'images et auto-légendage intelligent (**Auto-Captioning**).
-  - Optimisations mémoire VRAM avancées : latents VAE et text embeddings pré-mis en cache, précision mixte FP16, accumulation de gradients et export automatique en `.safetensors` immédiatement disponible dans les studios de génération.
-- **Synthèse Vocale Text-to-Speech (`tts`)** :
-  - Synthèse vocale ultra-naturelle en local sur GPU (RTX 2080) avec **Kokoro-82M** (ultra-rapide, français/anglais/multilingue).
-  - Clonage de voix haute fidélité (zero-shot) avec **Coqui XTTS-v2** à partir d'un échantillon audio de référence.
-  - Contrôle précis de la vitesse de diction, choix des voix prédéfinies et lecture audio directe dans le Web Studio.
-- **Enrichissement de Prompt (`enhance`)** :
-  - Optimisation des descriptions textuelles via LLM (Qwen3-32B).
-- **Architecture par Étapes (Stages)** :
-  - Conception modulaire facilitant l'ajout de nouveaux modèles, filtres d'upscaling ou nœuds ComfyUI.
-- **Interface Terminal Moderne** :
-  - Spinners animés de statut en temps réel (`IN_QUEUE`, `IN_PROGRESS`, `COMPLETED`), barres de progression de téléchargement et logs colorés.
-  - Utilisation de `rustls` (zéro dépendance OpenSSL système requise).
+High-performance, modular, and asynchronous Rust application orchestrating generative AI pipelines across **RunPod Serverless**, **Pod GPUs**, and **Public Endpoints** (Text-to-Video, Image-to-Video, Video-to-Video, Face Swap, Text-to-Image Flux, LoRA Fine-Tuning, Voice Cloning TTS, and LLM Prompt Enhancement).
 
 ---
 
-## 🚀 Installation & Compilation
+## 🌟 Key Features
 
-Assurez-vous d'avoir Rust installé (1.75+) :
+- **Web Studio & Media Gallery (`serve` / `ui`)**:
+  - **Comprehensive Interactive Visual Dashboard** to launch and manage all generation pipelines.
+  - **Built-in Media Gallery**: Browse images, audio, and videos, integrated video player, drag-and-drop file upload, instant download, deletion, and 1-click reuse of any media as a pipeline source.
+  - **Real-time Live Job Monitoring**: Live progress status badges (`Idle`, `In Queue`, `Active Render`), compute time metrics, and streamed execution logs.
+- **Cutting-edge Multi-Model Video Engines (`wan-2-5`, `ltx-2-5`, `minimax-h3`)**:
+  - **Wan 2.5** (`wan-2-5`): Reference video model featuring high temporal consistency and cinematic fluidity.
+  - **LTX-Video 2.5** (`ltx-2-5`): Ultra-fast DiT architecture optimized for record inference speeds directly on Pod GPU.
+  - **MiniMax-H3 / Hailuo 3** (`minimax-h3`): 2K high-fidelity cinematic generation with synchronized ambient audio.
+  - Selectable directly in the Web Studio or via CLI `--model <wan-2-5|ltx-2-5|minimax-h3>`.
+- **Image-to-Video (`img2vid`)**:
+  - Accepts **local image files** (`.png`, `.jpg`, `.webp`) automatically encoded as Base64 Data-URI, or remote URLs.
+  - Generates high-quality animated videos via your chosen video engine.
+- **Video-to-Video (`vid2vid`)**:
+  - Restyle, transform, and alter existing videos (`.mp4`, `.webm`, or URLs) with precise control over transformation strength (`--strength`).
+- **Face Swap (`faceswap`)**:
+  - Swap faces on **images** or **videos** using a single source portrait photo with automatic high-definition restoration (*CodeFormer / GFPGAN*).
+- **Interactive Crop Tool**:
+  - Built-in visual cropping modal with preset ratios (`1:1 Square`, `9:16 Portrait`, `16:9 Landscape`) and direct destination routing.
+- **Image-to-Image & Inpainting (`img2img`)**:
+  - Transform, restyle, or synthesize new scenes from a reference image with fine-grained denoise strength (`--strength`).
+  - **Interactive Inpainting Canvas**: Paint custom masks directly in the browser to modify specific regions while preserving the rest.
+  - **ControlNet Spatial Guidance**: Precise edge (Canny) and Depth Map guidance for structural retention.
+  - Supports both **RunPod Cloud (Flux / SDXL)** and **Local GPU (Diffusers)**.
+- **Text-to-Image (`txt2img`)**:
+  - High-speed image generation powered by **Flux 1 Schnell** or **Local Diffusers (SDXL Turbo / SDXL Lightning)** with custom steps, seeds, and dimensions.
+- **LoRA Training Studio (`train-lora` / Web Studio)**:
+  - Fine-tune custom concepts (faces, commercial products, artistic styles) directly on your Pod GPU.
+  - Built-in dataset manager with multi-image drag-and-drop upload and AI vision **Auto-Captioning**.
+  - Advanced VRAM optimizations: pre-cached VAE latents, FP16 mixed precision, and gradient accumulation.
+  - Automatic export to `.safetensors` immediately usable across Text-to-Image and Image-to-Image.
+- **Text-to-Speech & Voice Cloning (`tts`)**:
+  - Ultra-natural local speech synthesis powered by **Kokoro-82M** (ultra-fast, English/multilingual).
+  - High-fidelity zero-shot voice cloning with **Coqui XTTS-v2** from a 3-10 second reference audio clip.
+- **Prompt Enhancer (`enhance`)**:
+  - Automatic prompt refinement and creative detail expansion powered by **Qwen3-32B**.
+- **Modern Terminal Experience & Architecture**:
+  - Modular, extensible Rust stages.
+  - Animated live status spinners, colored logs, and non-blocking asynchronous execution.
+  - Pure `rustls` networking (no system OpenSSL dependencies required).
+
+---
+
+## 🚀 Installation & Build
+
+Ensure Rust (1.75+) is installed on your system:
 
 ```bash
-# Compiler en mode debug
+# Clone the repository
+git clone https://github.com/NikOol172/cloudcompositing.git
+cd cloudcompositing
+
+# Build debug binary
 cargo build
 
-# Ou compiler la version optimisée (Release)
+# Build optimized release binary
 cargo build --release
 ```
 
-L'exécutable se trouvera dans `target/release/runpod-pipeline`.
+The compiled binary will be located at `target/release/runpod-pipeline`.
+
+---
+
+## 🐳 Docker & RunPod Cloud Deployment
+
+RunPod Studio is packaged as a ready-to-run container image with CUDA 12.1 and PyTorch pre-installed:
+
+```bash
+# Pull the public container image
+docker pull ghcr.io/nikool172/cloudcompositing:latest
+
+# Run locally with GPU support
+docker run --gpus all -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcompositing:latest
+```
+
+### Deploying as a 1-Click RunPod Template
+1. In the **RunPod Console** → **Templates** → **New Template**:
+   - **Image Name**: `ghcr.io/nikool172/cloudcompositing:latest`
+   - **Container Disk**: `30 GB`
+   - **Volume Disk**: `20+ GB` (mounted to `/app/outputs`)
+   - **Expose HTTP Ports**: `3000`
+   - **Environment Variables**:
+     - `PORT` = `3000`
+     - `RUNPOD_API_KEY` = `your_runpod_api_key`
+     - `HF_TOKEN` = `your_huggingface_token` (optional, for LTX-Video)
+2. Deploy on any GPU pod (e.g. RTX 4090, A40, L40S).
+3. Click **Connect → Connect to HTTP Service [Port 3000]** to launch the Studio.
 
 ---
 
 ## 🔑 Configuration
 
-Définissez votre clé API RunPod soit dans votre environnement :
+Set your RunPod API key in your shell environment:
 
 ```bash
-export RUNPOD_API_KEY="votre_cle_api_runpod"
+export RUNPOD_API_KEY="your_runpod_api_key"
 ```
 
-Soit via un fichier `.env` à la racine du projet :
+Or create a `.env` file in the root of the project:
 
 ```env
-RUNPOD_API_KEY=votre_cle_api_runpod
+RUNPOD_API_KEY=your_runpod_api_key
+HF_TOKEN=your_huggingface_token
 ```
 
-Soit en passant le flag global `--api-key <VOTRE_CLE>` lors de l'exécution.
+Or pass the global CLI flag `--api-key <KEY>`.
 
 ---
 
-## 📖 Guide d'Utilisation
- 
-### 🌟 0. Interface Web Studio & Galerie Médias (`serve` / `ui`)
+## 📖 Usage Guide
 
-Lancer le tableau de bord interactif dans votre navigateur :
+### 🌟 0. Web Studio & Media Gallery (`serve` / `ui`)
+
+Launch the visual dashboard in your browser:
 
 ```bash
 cargo run -- serve
-# Ou spécifier un port personnalisé :
+# Or specify a custom port:
 cargo run -- serve --port 3000
 ```
 
-Accessible immédiatement sur **`http://localhost:3000`** avec :
-- **Studio de génération visuel** pour tous les modèles.
-- **Galerie de médias** avec filtres, prévisualisation, lecteur vidéo intégré et téléversement Drag & Drop.
-- **Suivi des jobs RunPod en temps réel**.
+Open **`http://localhost:3000`** to access:
+- Multi-pipeline creative studio.
+- Interactive media gallery and file uploader.
+- Prompt library and search engine.
+- Real-time job logs and GPU balance monitoring.
 
 ---
 
 ### 1. Image-to-Video (`img2vid`)
 
-Animer une image locale ou distante en vidéo avec le modèle souhaité (`wan-2-5`, `ltx-2-5`, `minimax-h3`) :
+Animate a local or remote image into video using your chosen engine (`wan-2-5`, `ltx-2-5`, `minimax-h3`):
 
 ```bash
-# Avec Wan 2.5 (par défaut)
+# Using Wan 2.5 (Default)
 cargo run -- img2vid \
   --image ./text-to-video/output_image.png \
-  --prompt "Slow cinematic camera pan, soft light reflections" \
+  --prompt "Slow cinematic camera pan, soft golden hour reflections" \
   --duration 5 \
   --resolution 720p \
-  --output mon_animation.mp4
+  --output animation.mp4
 
-# Avec MiniMax-H3 (Hailuo 3)
+# Using MiniMax-H3 (Hailuo 3 with audio)
 cargo run -- img2vid \
   --model minimax-h3 \
-  --image ./mon_image.png \
+  --image ./my_image.png \
   --prompt "Dynamic cinematic movement with ambient sound, 4k detail" \
   --output hailuo_video.mp4
 
-# Avec LTX-Video 2.5 (génération ultra-rapide)
+# Using LTX-Video 2.5 (Ultra-fast generation)
 cargo run -- img2vid \
   --model ltx-2-5 \
-  --image ./mon_image.png \
+  --image ./my_image.png \
   --output ltx_video.mp4
 ```
 
+---
+
 ### 2. Video-to-Video (`vid2vid`)
 
-Modifier, restyler ou transformer une vidéo existante :
+Restyle or transform an existing video:
 
 ```bash
 cargo run -- vid2vid \
   --model minimax-h3 \
-  --video ./avion_focus_bas.mp4 \
-  --prompt "A luxury cinematic commercial shot of black silky compression flight socks, golden hour warm lighting from airplane window, subtle gentle movement, 8k uhd, photorealistic" \
+  --video ./input_video.mp4 \
+  --prompt "Anime style watercolor animation, vibrant colors, gentle movement, 8k uhd" \
   --strength 0.65 \
   --resolution 720p \
-  --output ./avion_modifie.mp4
+  --output ./restyled_video.mp4
 ```
+
+---
 
 ### 3. Face Swap (`faceswap`)
 
-Remplacer un visage sur une image ou une vidéo :
+Swap faces in an image or a video:
 
 ```bash
-# Face Swap sur une image
+# Face Swap on Image
 cargo run -- faceswap \
-  --source ./mon_portrait.jpg \
-  --target ./senior_taxi_aeroport.png \
-  --output ./senior_mon_visage.png
+  --source ./portrait.jpg \
+  --target ./target_scene.png \
+  --output ./swapped_image.png
 
-# Face Swap sur une vidéo complète
+# Face Swap on Full Video
 cargo run -- faceswap \
-  --source ./mon_portrait.jpg \
-  --target ./senior_taxi_aeroport.mp4 \
-  --output ./senior_video_mon_visage.mp4
+  --source ./portrait.jpg \
+  --target ./target_clip.mp4 \
+  --output ./swapped_video.mp4
 ```
 
-### 4. Pipeline complet Text-to-Video (`txt2vid`)
+---
 
-Générer l'image puis l'animer automatiquement avec le moteur vidéo de votre choix :
+### 4. Full Text-to-Video Pipeline (`txt2vid`)
+
+Generate an image and automatically animate it into video:
 
 ```bash
 cargo run -- txt2vid \
-  --model minimax-h3 \
-  --prompt "An elegant woman walking briskly toward modern airport terminal, pink compression socks" \
+  --model wan-2-5 \
+  --prompt "An elegant woman walking briskly toward modern airport terminal, cinematic lighting" \
   --resolution 720p \
   --duration 5 \
   --interactive \
-  --image-output ./mon_image.png \
-  --video-output ./ma_video.mp4
+  --image-output ./generated_image.png \
+  --video-output ./final_video.mp4
 ```
+
+---
 
 ### 5. Image-to-Image (`img2img`)
 
-Générer une nouvelle scène ou transformer une image de référence :
+Transform or restyle from a reference image:
 
 ```bash
-# Exemple : Générer une joueuse de pickleball à partir d'une photo de bas de compression
+# Transform reference image
 cargo run -- img2img \
-  --image ./bas_compression.png \
-  --prompt "An athletic female pickleball player wearing the pink compression socks, holding a paddle on outdoor sunny court, 8k uhd photorealistic" \
+  --image ./reference_item.png \
+  --prompt "An athletic female pickleball player wearing pink compression socks, outdoor sunny court, 8k uhd photorealistic" \
   --strength 0.75 \
-  --output ./pickleball_player.png
+  --output ./transformed.png
 
-# Exemple avec masque Inpainting (modifier uniquement une zone précise)
+# Inpainting with Mask
 cargo run -- img2img \
-  --image ./photo_originale.png \
-  --mask ./masque_zone.png \
+  --image ./original.png \
+  --mask ./mask.png \
   --prompt "A luxury sporty watch on wrist, realistic details" \
   --strength 0.80 \
-  --output ./photo_retouchee.png
+  --output ./inpainted.png
 ```
+
+---
 
 ### 6. Text-to-Image (`txt2img`)
 
-Générer une image avec **RunPod Flux (Cloud)** ou **en Local (GPU RTX 2080 / Diffusers)** :
+Generate images using **RunPod Flux (Cloud)** or **Local GPU (Diffusers)**:
 
 ```bash
-# Mode Cloud (RunPod Flux Schnell)
+# Cloud Mode (Flux 1 Schnell)
 cargo run -- txt2img \
-  --prompt "Portrait photograph of an astronaut looking at the stars" \
+  --prompt "Portrait photograph of an astronaut looking at distant galaxy, warm lighting" \
   --width 1024 \
   --height 1024 \
   --steps 4 \
-  --output astro.png
+  --output astronaut.png
 
-# Mode Local GPU (ex: RTX 2080 avec SDXL Turbo en < 2 secondes)
+# Local GPU Mode (e.g. RTX 2080 / 4090 with SDXL Turbo in < 2 seconds)
 cargo run -- txt2img \
-  --prompt "Portrait photograph of an astronaut looking at the stars, 8k uhd" \
+  --prompt "Portrait photograph of an astronaut looking at distant galaxy, 8k uhd" \
   --local \
   --local-model "stabilityai/sdxl-turbo" \
   --width 512 \
   --height 512 \
   --steps 2 \
-  --output astro_local.png
+  --output astronaut_local.png
 ```
 
 ---
 
-## 💻 Exécution Locale & Déploiement sur Machine GPU (ex: RTX 2080)
+### 7. LoRA Fine-Tuning (`train-lora`)
 
-Si vous clonez ce projet sur une machine dotée d'une carte graphique Nvidia (comme une RTX 2080 avec 8 Go de VRAM) :
+Train a custom concept directly on GPU:
 
-1. **Installer les dépendances Python requises :**
-   ```bash
-   pip install -r requirements-local-gpu.txt
-   ```
-   *(Pour PyTorch avec CUDA : `pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121`)*
-
-2. **Accélération FaceSwap automatique :**
-   - Le moteur InsightFace détecte automatiquement la présence de CUDA via `onnxruntime-gpu` et exécute le swap sur votre GPU, ce qui est quasi-instantané.
-
-3. **Génération d'images locale gratuite :**
-   - Vous pouvez exécuter `txt2img` ou `txt2vid` avec `--local` (ou basculer le sélecteur dans l'interface Web sur `Local GPU`).
-   - Modèles recommandés pour 8 Go VRAM : `stabilityai/sdxl-turbo` (2 steps), `ByteDance/SDXL-Lightning` (4-8 steps) ou `runwayml/stable-diffusion-v1-5`.
+```bash
+python3 src/lora_train_engine.py \
+  --dataset-dir ./datasets/my_subject \
+  --instance-prompt "sks person" \
+  --output-name my_lora.safetensors \
+  --train-steps 500 \
+  --lora-rank 8 \
+  --base-model "runwayml/stable-diffusion-v1-5"
+```
 
 ---
 
-### 6. Tester l'enrichissement de Prompt (`enhance`)
+### 8. Text-to-Speech Synthesis (`tts`)
+
+Synthesize speech or clone voices locally:
+
+```bash
+# Kokoro-82M Ultra-fast synthesis
+python3 src/tts_engine.py \
+  --engine kokoro \
+  --text "Welcome to RunPod Studio. Experience state of the art generative AI." \
+  --voice af_bella \
+  --output welcome.wav
+
+# XTTS-v2 Voice Cloning
+python3 src/tts_engine.py \
+  --engine xtts \
+  --text "This speech mimics the exact timbre and intonation of the speaker sample." \
+  --speaker-wav ./my_voice_sample.wav \
+  --output cloned_voice.wav
+```
+
+---
+
+### 9. Prompt Enhancer (`enhance`)
+
+Enhance prompts using Qwen3-32B:
 
 ```bash
 cargo run -- enhance \
@@ -250,30 +314,44 @@ cargo run -- enhance \
 
 ---
 
-## 🏗️ Structure du Code
+## 🏗️ Codebase Architecture
 
 ```
 src/
-├── main.rs                   # Point d'entrée CLI et orchestration
-├── cli.rs                    # Définition des sous-commandes Clap
-├── server/                   # Serveur Web & API REST RunPod Studio
-│   └── mod.rs                # Routes API média, streaming et exécution asynchrone
-├── client.rs                 # Client HTTP asynchrone RunPod avec polling et spinners
-├── models.rs                 # Modèles de données (Flux, Wan, FaceSwap, Vid2Vid, LLM, JobStatus)
-├── utils.rs                  # Helpers d'encodage Data-URI, téléchargement streaming et preview
+├── main.rs                   # Entry point and CLI orchestration
+├── cli.rs                    # Clap subcommands and flags definition
+├── server/                   # Web server & REST API (Axum)
+│   └── mod.rs                # Media routes, async jobs, and live execution streaming
+├── client.rs                 # Asynchronous RunPod HTTP client with spinners & polling
+├── models.rs                 # Pipeline data models (Flux, Wan, FaceSwap, Vid2Vid, LLM, JobStatus)
+├── utils.rs                  # Helpers: Data-URI encoding, media streaming, and preview utils
+├── ltx_engine.py             # Local Pod GPU engine for LTX-Video 2.5
+├── model_downloader.py       # Background downloader for gated Hugging Face weights
+├── txt2img_engine.py         # Local GPU Text-to-Image engine (SDXL Turbo / Lightning)
+├── img2img_engine.py         # Local GPU Image-to-Image & Inpainting engine
+├── lora_train_engine.py      # High-performance LoRA fine-tuning script
+├── tts_engine.py             # Kokoro & Coqui XTTS speech synthesis engine
 └── pipeline/
-    ├── mod.rs                # Trait Stage & Moteur de Pipeline
-    ├── context.rs            # PipelineContext partagé entre les étapes
+    ├── mod.rs                # Stage trait & Pipeline execution engine
+    ├── context.rs            # Shared PipelineContext across stages
     └── stages/
-        ├── prompt_enhance.rs     # Étape LLM (Qwen)
-        ├── text_to_image.rs      # Étape Flux Schnell / Dev
-        ├── image_to_video.rs     # Étape Wan 2.5 (Img2Vid)
-        ├── video_to_video.rs     # Étape Wan 2.5 / ComfyUI (Vid2Vid)
-        ├── face_swap.rs          # Étape Face Swap (ReActor / InsightFace)
-        ├── interactive_review.rs # Étape de validation utilisateur / preview
-        └── download.rs           # Étape de téléchargement de médias avec progression
-web/                          # Interface Web Studio (HTML5 / Vanilla CSS / ES Modules)
-├── index.html                # Tableau de bord Studio & Galerie
-├── style.css                 # Thème sombre moderne & Glassmorphism
-└── app.js                    # Logique interactive, upload & polling
+        ├── prompt_enhance.rs     # LLM enhancement stage (Qwen3)
+        ├── text_to_image.rs      # Flux Schnell / Dev stage
+        ├── image_to_video.rs     # Wan 2.5 / LTX-Video / MiniMax stage
+        ├── video_to_video.rs     # Video-to-Video transformation stage
+        ├── face_swap.rs          # ReActor / InsightFace Face Swap stage
+        ├── interactive_review.rs # Interactive user validation stage
+        └── download.rs           # Media download and verification stage
+web/                          # Modern Web Studio (HTML5 / Vanilla CSS / ES Modules)
+├── index.html                # Visual dashboard, modals, and pipeline tabs
+├── style.css                 # Dark mode theme & Glassmorphism design system
+└── app.js                    # Interactive controllers, polling, canvas painter & crop tool
+Dockerfile                    # Multi-stage build with CUDA, PyTorch, and compiled Rust binary
+.github/workflows/docker.yml  # Automated CI/CD build and publish to GHCR
 ```
+
+---
+
+## 📄 License
+
+MIT License. Designed for high performance and modularity on RunPod.
