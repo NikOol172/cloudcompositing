@@ -133,6 +133,14 @@ def main():
                 def __getattr__(self, name): return lambda *args, **kwargs: None
             torch.xpu = _DummyXpu()
 
+        import torch.distributed as dist
+        if not hasattr(dist, "device_mesh"):
+            import types
+            dm = types.ModuleType("device_mesh")
+            dm.DeviceMesh = type("DeviceMesh", (), {})
+            dm.init_device_mesh = lambda *args, **kwargs: None
+            dist.device_mesh = dm
+
         import torch.nn.functional as F
         from torchvision import transforms
         from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel

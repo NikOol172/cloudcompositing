@@ -62,8 +62,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements-local-gpu.txt /app/
 RUN pip install --no-cache-dir -r requirements-local-gpu.txt
 
-# Shim torch.xpu for diffusers>=0.31 compatibility on PyTorch builds without XPU
-RUN python3 -c 'import site; p = site.getsitepackages()[0] + "/patch_xpu.pth"; open(p, "w").write("import torch; not hasattr(torch, \"xpu\") and setattr(torch, \"xpu\", type(\"xpu\", (), {\"is_available\": staticmethod(lambda: False), \"device_count\": staticmethod(lambda: 0), \"empty_cache\": staticmethod(lambda: None), \"__getattr__\": lambda s, n: lambda *a, **k: None})())\n")'
+# Shim torch.xpu and torch.distributed.device_mesh for diffusers>=0.31 compatibility on PyTorch builds < 2.4
+RUN python3 -c 'import site; p = site.getsitepackages()[0] + "/patch_compat.pth"; open(p, "w").write("import torch, types\nnot hasattr(torch, \"xpu\") and setattr(torch, \"xpu\", type(\"xpu\", (), {\"is_available\": staticmethod(lambda: False), \"device_count\": staticmethod(lambda: 0), \"empty_cache\": staticmethod(lambda: None), \"__getattr__\": lambda s, n: lambda *a, **k: None})())\nimport torch.distributed as _dist\nnot hasattr(_dist, \"device_mesh\") and setattr(_dist, \"device_mesh\", types.SimpleNamespace(DeviceMesh=type(\"DeviceMesh\", (), {}), init_device_mesh=lambda *a, **k: None))\n")'
 
 # Copie du binaire Rust compilé depuis l'étape précédente
 COPY --from=builder /usr/src/app/target/release/runpod-pipeline /app/runpod-pipeline
