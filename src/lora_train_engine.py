@@ -162,14 +162,27 @@ def main():
     else:
         device = torch.device(args.device)
 
-    weight_dtype = torch.float16 if (device.type == "cuda" and args.mixed_precision == "fp16") else torch.float32
-
+    # Determine optimal precision (bfloat16 on Ada Lovelace/Ampere avoids FP16 exponent overflow)
     if device.type == "cuda":
+        if torch.cuda.is_bf16_supported() and args.mixed_precision in ("fp16", "bf16"):
+            weight_dtype = torch.bfloat16
+            amp_dtype = torch.bfloat16
+            prec_name = "bfloat16 (Ada Lovelace native, NaN-safe)"
+        elif args.mixed_precision == "fp16":
+            weight_dtype = torch.float16
+            amp_dtype = torch.float16
+            prec_name = "float16"
+        else:
+            weight_dtype = torch.float32
+            amp_dtype = torch.float32
+            prec_name = "float32"
         gpu_name = torch.cuda.get_device_name(0)
         vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-        print(f"[INFO] Training device: GPU '{gpu_name}' ({vram_gb:.1f} GB VRAM) with {weight_dtype}")
+        print(f"[INFO] Training device: GPU '{gpu_name}' ({vram_gb:.1f} GB VRAM) with {prec_name}")
     else:
-        print(f"[INFO] Training device: CPU (Precision: {weight_dtype})")
+        weight_dtype = torch.float32
+        amp_dtype = torch.float32
+        print("[INFO] Training device: CPU (Precision: float32)")
 
     torch.manual_seed(args.seed)
 
@@ -198,13 +211,11 @@ def main():
             text_encoder = CLIPTextModel.from_pretrained(args.base_model, subfolder="text_encoder", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
         text_encoder.eval()
 
-    try:
-        vae = AutoencoderKL.from_pretrained(args.base_model, subfolder="vae", torch_dtype=weight_dtype, variant=variant, low_cpu_mem_usage=True).to(device)
-    except Exception:
-        vae = AutoencoderKL.from_pretrained(args.base_model, subfolder="vae", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
+    # Always load and run VAE in float32 to completely avoid SD/SDXL VAE FP16 numerical overflow (NaNs)
+    vae = AutoencoderKL.from_pretrained(args.base_model, subfolder="vae", torch_dtype=torch.float32, low_cpu_mem_usage=True).to(device)
+    vae.eval()
 
     noise_scheduler = DDPMScheduler.from_pretrained(args.base_model, subfolder="scheduler")
-    vae.eval()
 
     # Preprocess images to normalized tensors: [-1, 1]
     transform = transforms.Compose([
@@ -212,17 +223,18 @@ def main():
         transforms.Normalize([0.5], [0.5]),
     ])
 
-    print("[INFO] Pre-caching VAE latents and text embeddings to optimize VRAM...")
+    print("[INFO] Pre-caching VAE latents in FP32 and text embeddings to optimize VRAM...")
     cached_latents = []
     cached_embeddings = []
 
     with torch.no_grad():
         for pil_img, caption, name in raw_samples:
-            tensor_img = transform(pil_img).unsqueeze(0).to(device, dtype=weight_dtype)
-            # Encode image to latent space
+            # Run VAE encode in float32 for absolute numerical stability
+            tensor_img = transform(pil_img).unsqueeze(0).to(device, dtype=torch.float32)
             latent_dist = vae.encode(tensor_img).latent_dist
             latent = latent_dist.sample() * vae.config.scaling_factor
-            cached_latents.append(latent.squeeze(0).cpu())
+            latent = torch.nan_to_num(latent, nan=0.0, posinf=1.0, neginf=-1.0)
+            cached_latents.append(latent.squeeze(0).to(dtype=weight_dtype).cpu())
 
             if is_sdxl:
                 ids_1 = tokenizer_1(caption, padding="max_length", max_length=tokenizer_1.model_max_length, truncation=True, return_tensors="pt").input_ids.to(device)
@@ -288,7 +300,7 @@ def main():
     # Configure cuDNN and SDPA kernels for maximum speed and minimal memory
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
-        torch.backends.cuda.enable_flash_sdp(False)
+        torch.backends.cuda.enable_flash_sdp(True)
         torch.backends.cuda.enable_mem_efficient_sdp(True)
         torch.backends.cuda.enable_math_sdp(True)
 
