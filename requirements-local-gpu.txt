@@ -21,6 +21,8 @@ insightface>=0.7.3
 opencv-python>=4.8.0
 numpy>=1.24.0
 pillow>=10.0.0
+imageio>=2.30.0
+imageio-ffmpeg>=0.4.9
 
 # Local Text-to-Speech (TTS) Engines: Kokoro-82M & Coqui XTTS-v2
 soundfile>=0.12.1

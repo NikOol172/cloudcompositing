@@ -45,6 +45,85 @@ def parse_dimensions(res_str):
             pass
     return 768, 512
 
+def save_video_safely(frames, output_path, fps=24):
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+
+    # 1. Try diffusers export_to_video first
+    try:
+        from diffusers.utils import export_to_video
+        export_to_video(frames, output_path, fps=fps)
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return
+    except Exception as e:
+        print(f"[WARN] Diffusers export_to_video failed: {e}", flush=True)
+
+    # 2. Try installing imageio-ffmpeg and retrying export_to_video
+    try:
+        import subprocess
+        print("[INFO] Attempting to install imageio-ffmpeg...", flush=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", "imageio-ffmpeg"], check=False)
+        from diffusers.utils import export_to_video
+        export_to_video(frames, output_path, fps=fps)
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return
+    except Exception as e:
+        print(f"[WARN] Retry after imageio-ffmpeg install failed: {e}", flush=True)
+
+    # 3. Direct FFmpeg CLI streaming fallback (fast, high-quality, native libx264)
+    print("[INFO] Using direct FFmpeg CLI stream encoding fallback...", flush=True)
+    import subprocess
+    import numpy as np
+
+    np_frames = []
+    for f in frames:
+        if hasattr(f, "convert"):
+            np_frames.append(np.array(f.convert("RGB")))
+        elif isinstance(f, np.ndarray):
+            np_frames.append(f)
+
+    if not np_frames:
+        raise RuntimeError("No frames generated to save video.")
+
+    h, w, _ = np_frames[0].shape
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "rawvideo",
+        "-vcodec", "rawvideo",
+        "-s", f"{w}x{h}",
+        "-pix_fmt", "rgb24",
+        "-r", str(fps),
+        "-i", "-",
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-preset", "fast",
+        "-crf", "19",
+        output_path
+    ]
+    try:
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for frame in np_frames:
+            proc.stdin.write(frame.tobytes())
+        proc.stdin.close()
+        proc.wait(timeout=120)
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return
+    except Exception as e:
+        print(f"[WARN] Direct FFmpeg CLI failed: {e}", flush=True)
+
+    # 4. OpenCV fallback
+    try:
+        import cv2
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_path, fourcc, float(fps), (w, h))
+        for f in np_frames:
+            bgr = cv2.cvtColor(f, cv2.COLOR_RGB2BGR)
+            out.write(bgr)
+        out.release()
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return
+    except Exception as e:
+        raise RuntimeError(f"All video export strategies failed: {e}")
+
 def main():
     args = parse_args()
     start_time = time.time()
@@ -176,7 +255,7 @@ def main():
     print(f"[INFO] Rendering finished in {gen_elapsed:.1f}s. Encoding MP4 file...", flush=True)
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
-    export_to_video(frames, args.output, fps=fps)
+    save_video_safely(frames, args.output, fps=fps)
 
     total_time = time.time() - start_time
     file_size_mb = os.path.getsize(args.output) / (1024 * 1024) if os.path.exists(args.output) else 0
