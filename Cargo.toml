@@ -2,8 +2,8 @@
 name = "runpod-pipeline"
 version = "0.1.0"
 edition = "2021"
-authors = ["RunPod Pipeline Developer"]
-description = "A modular, asynchronous Rust application for orchestrating RunPod AI pipelines (Text-to-Video, Image-to-Video, LLM enhancement, etc.)"
+authors = ["CloudCompositing Developer"]
+description = "A modular, asynchronous Rust application for CloudCompositing.com orchestrating AI pipelines"
 
 [dependencies]
 tokio = { version = "1.38", features = ["full"] }

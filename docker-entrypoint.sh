@@ -5,7 +5,7 @@ set -e
 PORT="${PORT:-3000}"
 
 echo "========================================================"
-echo "⚡ Welcome to RunPod Studio & Media Manager"
+echo "⚡ Welcome to CloudCompositing.com & Media Manager"
 echo "🌐 HTTP Listening Port : ${PORT}"
 echo "📁 Working Directory   : $(pwd)"
 echo "========================================================"

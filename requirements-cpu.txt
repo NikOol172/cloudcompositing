@@ -1,4 +1,4 @@
-# RunPod Studio - CPU Dependencies
+# CloudCompositing.com - CPU Dependencies
 # PyTorch CPU is pre-installed via https://download.pytorch.org/whl/cpu in Dockerfile.cpu
 
 # HuggingFace & Utilities

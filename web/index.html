@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RunPod Studio ⚡ Media & AI Creative Studio</title>
+  <title>CloudCompositing.com ⚡ Media & AI Creative Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=33">
 </head>
 <body>
   <div class="app-layout">
@@ -16,10 +16,10 @@
       <div class="brand">
         <div class="logo-icon">⚡</div>
         <div class="brand-text">
-          <h1>RunPod Studio</h1>
+          <h1>CloudCompositing.com</h1>
           <div class="brand-badges">
-            <span class="version-badge">v1.2 Studio</span>
-
+            <span class="version-badge">v1.2</span>
+            <span class="license-badge-pill community" id="sidebar-license-badge" onclick="openLicenseModal()" title="License Tier - Click to view or upgrade">COMMUNITY</span>
           </div>
         </div>
       </div>
@@ -82,10 +82,10 @@
       <header class="mobile-top-bar">
         <div class="mobile-brand">
           <div class="logo-icon-sm">⚡</div>
-          <span class="mobile-brand-title">RunPod Studio</span>
+          <span class="mobile-brand-title">CloudCompositing.com</span>
         </div>
         <div class="mobile-header-actions">
-          
+          <span class="mobile-license-pill community" id="mobile-license-pill" onclick="openLicenseModal()">COMMUNITY</span>
           <button type="button" class="btn-wifi-badge" onclick="openMobileModal()" title="Mobile Pod Access">
             <span data-i18n="btn_mobile_badge">📱 Pod Mobile</span>
           </button>
@@ -108,7 +108,7 @@
             <button class="pill-btn" data-pipeline="vid2vid" data-i18n="pipe_vid2vid">🎞️ Video-to-Video</button>
             <button class="pill-btn" data-pipeline="txt2img" data-i18n="pipe_txt2img">✨ Text-to-Image</button>
             <button class="pill-btn" data-pipeline="tts" data-i18n="pipe_tts">🎙️ Text-to-Speech</button>
-            <button class="pill-btn" data-pipeline="lora-train" data-i18n="pipe_lora">🎓 LoRA Training</button>
+            <button class="pill-btn" data-pipeline="lora-train" data-i18n="pipe_lora">🎓 LoRA Training <span class="pill-pro-tag">PRO</span></button>
             <button class="pill-btn" data-pipeline="enhance" data-i18n="pipe_enhance">🧠 Prompt Enhancer</button>
           </div>
         </div>
@@ -675,7 +675,7 @@
                   <button type="button" class="btn-prompt-history-inline" onclick="openPromptSelectorModal('tts-text')" data-i18n="btn_history">📜 History</button>
                 </div>
                 <div class="textarea-wrapper">
-                  <textarea id="tts-text" rows="4" placeholder="e.g. Welcome to RunPod Studio! Experience ultra-fast text-to-speech and voice cloning powered by Kokoro and XTTS."></textarea>
+                  <textarea id="tts-text" rows="4" placeholder="e.g. Welcome to CloudCompositing.com! Experience ultra-fast text-to-speech and voice cloning powered by Kokoro and XTTS."></textarea>
                   <button type="button" class="btn-enhance-inline" title="Optimize Prompt" onclick="enhanceCurrentPrompt('tts-text')" data-i18n="btn_enhance">🧠 Optimize</button>
                 </div>
               </div>
@@ -685,7 +685,7 @@
                   <label for="tts-engine">Speech Synthesis Engine</label>
                   <select id="tts-engine" onchange="handleTtsEngineChange()">
                     <option value="kokoro" selected>⚡ Kokoro-82M (Ultra-fast & Natural)</option>
-                    <option value="xtts">🎭 Coqui XTTS-v2 (High-Fidelity Voice Cloning)</option>
+                    <option value="xtts">🎭 Coqui XTTS-v2 (Voice Cloning) 👑 PRO</option>
                   </select>
                 </div>
                 <div class="form-group col">
@@ -884,7 +884,7 @@
             </div>
 
             <div class="live-terminal-logs" id="live-logs-container">
-              <div class="log-line info">✨ RunPod Studio ready. Select a pipeline and start creating.</div>
+              <div class="log-line info">✨ CloudCompositing.com ready. Select a pipeline and start creating.</div>
             </div>
           </div>
         </div>
@@ -980,8 +980,65 @@
       <section id="tab-settings" class="tab-pane">
         <div class="section-header">
           <div>
-            <h2>Settings & RunPod Configuration</h2>
-            <p class="subtitle">Manage your authentication keys and configure your default AI endpoints.</p>
+            <h2>Settings & Cloud Configuration</h2>
+            <p class="subtitle">Manage your CloudCompositing license, API keys, and model endpoints.</p>
+          </div>
+        </div>
+
+        <!-- License & Subscription Card -->
+        <div class="card glass-card license-status-card" id="settings-license-card">
+          <div class="license-card-header">
+            <div class="license-title-group">
+              <div class="license-avatar" id="settings-license-avatar">👑</div>
+              <div>
+                <div class="license-tier-row">
+                  <h3>CloudCompositing.com Plan</h3>
+                  <span class="badge-tier community" id="settings-license-tier-badge">COMMUNITY</span>
+                </div>
+                <span class="license-sub-info" id="settings-license-sub-info">Free Community Edition — Limited features</span>
+              </div>
+            </div>
+            <div class="license-header-actions">
+              <a href="https://cloudcompositing.com" target="_blank" rel="noopener noreferrer" class="btn-primary btn-sm" id="btn-upgrade-license">
+                <span>⚡ Upgrade to Pro</span>
+              </a>
+              <button type="button" class="btn-secondary btn-sm" onclick="openLicenseModal()">
+                <span>🔑 Enter Key</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="license-features-grid">
+            <div class="license-feature-item">
+              <span class="feat-icon">✨</span>
+              <span class="feat-name">Text & Image Gen</span>
+              <span class="feat-status check">✓ Unlimited</span>
+            </div>
+            <div class="license-feature-item">
+              <span class="feat-icon">🎬</span>
+              <span class="feat-name">Video Engines (LTX/Wan)</span>
+              <span class="feat-status check">✓ Included</span>
+            </div>
+            <div class="license-feature-item">
+              <span class="feat-icon">🎭</span>
+              <span class="feat-name">FaceSwap Video</span>
+              <span class="feat-status pro-only" id="feat-faceswap-video-status">👑 Pro Only</span>
+            </div>
+            <div class="license-feature-item">
+              <span class="feat-icon">🎙️</span>
+              <span class="feat-name">XTTS Voice Cloning</span>
+              <span class="feat-status pro-only" id="feat-xtts-status">👑 Pro Only</span>
+            </div>
+            <div class="license-feature-item">
+              <span class="feat-icon">🎓</span>
+              <span class="feat-name">LoRA Training Studio</span>
+              <span class="feat-status pro-only" id="feat-lora-status">👑 Pro Only</span>
+            </div>
+            <div class="license-feature-item">
+              <span class="feat-icon">💼</span>
+              <span class="feat-name">Commercial Rights</span>
+              <span class="feat-status pro-only" id="feat-commercial-status">👑 Pro Only</span>
+            </div>
           </div>
         </div>
 
@@ -1345,16 +1402,82 @@
     </div>
   </div>
 
-  <!-- Modal RunPod Mobile Access -->
+  <!-- Modal License Activation -->
+  <div class="modal" id="license-modal">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.4rem;">👑</span>
+          <h3 id="license-modal-title">CloudCompositing.com Pro</h3>
+        </div>
+        <button class="modal-close" onclick="closeLicenseModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="flex-direction: column; gap: 16px; padding: 22px;">
+        <div class="license-modal-hero">
+          <div class="license-current-tier-box">
+            <span class="label">Current Plan:</span>
+            <span class="badge-tier community" id="modal-current-tier">COMMUNITY</span>
+          </div>
+          <p id="modal-tier-desc" style="font-size: 0.9rem; color: var(--text-muted); margin: 6px 0 0 0; line-height: 1.4;">
+            Unlock custom LoRA fine-tuning, high-definition FaceSwap video, voice cloning, and commercial license.
+          </p>
+        </div>
+
+        <div class="license-pro-benefits">
+          <div class="benefit-item"><span>🎓</span><span><strong>LoRA Training Studio</strong> (Train custom faces, characters & styles)</span></div>
+          <div class="benefit-item"><span>🎬</span><span><strong>FaceSwap Video</strong> (Swap faces on full video sequences)</span></div>
+          <div class="benefit-item"><span>🎙️</span><span><strong>XTTS-v2 Voice Cloning</strong> (Zero-shot voice cloning from audio sample)</span></div>
+          <div class="benefit-item"><span>💼</span><span><strong>Commercial License</strong> & Priority Generation Pipelines</span></div>
+        </div>
+
+        <div id="license-input-section" style="margin-top: 4px;">
+          <label for="license-key-input" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">
+            Enter License Key (format: <code>CC-PRO-XXXX-XXXX-XXXX</code>)
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="license-key-input" placeholder="CC-PRO-XXXX-XXXX-XXXX" style="flex: 1; font-family: var(--font-mono); text-transform: uppercase;">
+            <button type="button" class="btn-primary" id="btn-activate-license" onclick="activateLicenseKey()">
+              <span>Activate</span>
+            </button>
+          </div>
+          <div id="license-activation-error" style="color: #ef4444; font-size: 0.82rem; margin-top: 6px; display: none;"></div>
+        </div>
+
+        <div id="license-active-section" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 700; color: #10b981;">CloudCompositing Pro Activated ⚡</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Key: <code id="active-license-key-masked">CC-PRO-****</code></div>
+            </div>
+            <button type="button" class="btn-secondary btn-sm" onclick="deactivateLicenseKey()" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">
+              Deactivate
+            </button>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 6px; font-size: 0.85rem; color: var(--text-dim);">
+          Need a license key?
+          <a href="https://cloudcompositing.com" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); font-weight: 600; text-decoration: none;">
+            Get CloudCompositing Pro &rarr;
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeLicenseModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Mobile Access -->
   <div class="modal" id="mobile-modal">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
-        <h3 data-i18n="mobile_modal_title">📱 Mobile RunPod Access</h3>
+        <h3 data-i18n="mobile_modal_title">📱 Mobile Pod Access</h3>
         <button class="modal-close" onclick="closeMobileModal()">&times;</button>
       </div>
       <div class="modal-body" style="flex-direction: column; text-align: center; gap: 16px; padding: 24px 20px;">
         <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.5; margin: 0;" data-i18n="mobile_modal_desc">
-          Scan this QR code with your smartphone camera to access and control your RunPod Studio directly from your mobile device:
+          Scan this QR code with your smartphone camera to access and control CloudCompositing.com directly from your mobile device:
         </p>
 
         <div id="mobile-qr-container" style="display: flex; justify-content: center; align-items: center; background: #fff; padding: 14px; border-radius: 12px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
@@ -1386,6 +1509,6 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>

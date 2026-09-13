@@ -37,7 +37,7 @@ RUN cargo build --release --bin runpod-pipeline
 FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
 
 LABEL maintainer="NikOol172"
-LABEL description="RunPod Studio - Interface Web moderne & Orchestrateur IA (Video, Image, LoRA, TTS)"
+LABEL description="CloudCompositing.com - Interface Web moderne & Orchestrateur IA (Video, Image, LoRA, TTS)"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1

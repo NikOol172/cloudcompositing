@@ -135,6 +135,7 @@ pub struct AppState {
     pub jobs: Arc<Mutex<Vec<ServerJob>>>,
     pub prompts: Arc<Mutex<Vec<PromptEntry>>>,
     pub settings: Arc<Mutex<ServerSettings>>,
+    pub license: Arc<Mutex<crate::licensing::LicenseManager>>,
     pub workspace_dir: PathBuf,
 }
 
@@ -178,10 +179,13 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
         Vec::new()
     };
 
+    let license_manager = crate::licensing::LicenseManager::new(workspace_dir.clone());
+
     let state = AppState {
         jobs: Arc::new(Mutex::new(Vec::new())),
         prompts: Arc::new(Mutex::new(initial_prompts)),
         settings: Arc::new(Mutex::new(settings)),
+        license: Arc::new(Mutex::new(license_manager)),
         workspace_dir,
     };
 
@@ -194,6 +198,9 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
         .route("/api/prompts/:id", delete(delete_prompt))
         .route("/api/prompts/:id/favorite", post(toggle_favorite_prompt))
         .route("/api/settings", get(get_settings).post(save_settings))
+        .route("/api/license", get(get_license))
+        .route("/api/license/activate", post(activate_license))
+        .route("/api/license/deactivate", post(deactivate_license))
         .route("/api/balance", get(get_balance))
         .route("/api/system/info", get(get_system_info))
         .route("/api/models/status", get(get_models_status))
@@ -228,7 +235,7 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let url = format!("http://localhost:{}", port);
 
-    println!("\n{}", style("🚀 RunPod Studio & Media Manager ready!").bold().magenta());
+    println!("\n{}", style("🚀 CloudCompositing.com & Media Manager ready!").bold().magenta());
     println!("  • Local Web UI   : {}", style(&url).cyan().underlined().bold());
     if let Some(lan_ip) = crate::utils::get_local_lan_ip() {
         println!("  • Mobile / Wi-Fi : {}", style(format!("http://{}:{}", lan_ip, port)).green().underlined().bold());
@@ -247,7 +254,7 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
 }
 
 async fn serve_embedded_fallback() -> impl IntoResponse {
-    Html("<!DOCTYPE html><html><body><h1>RunPod Studio</h1><p>Web folder not found.</p></body></html>")
+    Html("<!DOCTYPE html><html><body><h1>CloudCompositing.com</h1><p>Web folder not found.</p></body></html>")
 }
 
 // ----------------------------------------------------
@@ -827,6 +834,46 @@ async fn save_settings(
     let mut settings = state.settings.lock().await;
     *settings = new_settings;
     StatusCode::OK
+}
+
+// ----------------------------------------------------
+// Licensing Handlers
+// ----------------------------------------------------
+#[derive(Deserialize)]
+pub struct ActivateLicensePayload {
+    pub license_key: String,
+}
+
+async fn get_license(State(state): State<AppState>) -> Json<crate::licensing::LicenseInfo> {
+    let lic = state.license.lock().await;
+    Json(lic.get_info())
+}
+
+async fn activate_license(
+    State(state): State<AppState>,
+    Json(payload): Json<ActivateLicensePayload>,
+) -> Result<Json<crate::licensing::LicenseInfo>, (StatusCode, Json<serde_json::Value>)> {
+    let mut lic = state.license.lock().await;
+    match lic.activate(&payload.license_key) {
+        Ok(info) => Ok(Json(info)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )),
+    }
+}
+
+async fn deactivate_license(
+    State(state): State<AppState>,
+) -> Result<Json<crate::licensing::LicenseInfo>, (StatusCode, Json<serde_json::Value>)> {
+    let mut lic = state.license.lock().await;
+    match lic.deactivate() {
+        Ok(info) => Ok(Json(info)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )),
+    }
 }
 
 
@@ -1710,6 +1757,14 @@ async fn generate_faceswap(
         || target_lower.ends_with(".webm")
         || target_lower.ends_with(".mov")
         || target_lower.ends_with(".mkv");
+
+    if is_video && !state.license.lock().await.is_pro() {
+        return Ok(Json(serde_json::json!({
+            "error": "Video FaceSwap requires a CloudCompositing Pro license. Upgrade at https://cloudcompositing.com to unlock video processing.",
+            "pro_required": true,
+            "status": "failed"
+        })));
+    }
     let raw_output = payload.output.unwrap_or_else(|| {
         if is_video {
             format!("{}.mp4", job_id)
@@ -2290,6 +2345,15 @@ async fn generate_tts(
     let speed = payload.speed.unwrap_or(1.0);
     let speaker_wav = payload.speaker_wav;
 
+    let is_voice_cloning = engine == "xtts" || speaker_wav.is_some();
+    if is_voice_cloning && !state.license.lock().await.is_pro() {
+        return Ok(Json(serde_json::json!({
+            "error": "Voice Cloning (XTTS-v2) is a CloudCompositing Pro feature. Kokoro TTS is free in Community mode. Upgrade at https://cloudcompositing.com",
+            "pro_required": true,
+            "status": "failed"
+        })));
+    }
+
     let output_file = format!("tts_{}_{}.wav", engine, rand::random::<u16>());
     let output_path = state.workspace_dir.join(&output_file);
 
@@ -2613,6 +2677,15 @@ async fn start_lora_training(
     State(state): State<AppState>,
     Json(payload): Json<TrainLoraPayload>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let is_pro = state.license.lock().await.is_pro();
+    if !is_pro {
+        return Ok(Json(serde_json::json!({
+            "error": "LoRA Training Studio is a CloudCompositing Pro feature. Upgrade at https://cloudcompositing.com to unlock custom model training.",
+            "pro_required": true,
+            "status": "failed"
+        })));
+    }
+
     let job_id = format!("job_{}", rand::random::<u32>());
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)

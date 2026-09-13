@@ -1,6 +1,6 @@
-# RunPod Studio (Rust) 🦀⚡
+# CloudCompositing.com (Rust) 🦀⚡
 
-High-performance, modular, and asynchronous Rust application orchestrating generative AI pipelines across **RunPod Serverless**, **Pod GPUs**, and **Public Endpoints** (Text-to-Video, Image-to-Video, Video-to-Video, Face Swap, Text-to-Image Flux, LoRA Fine-Tuning, Voice Cloning TTS, and LLM Prompt Enhancement).
+High-performance, modular, and asynchronous Rust application orchestrating generative AI pipelines across **CloudCompositing.com**, **Pod GPUs**, **RunPod Serverless**, and **Public Endpoints** (Text-to-Video, Image-to-Video, Video-to-Video, Face Swap, Text-to-Image Flux, LoRA Fine-Tuning, Voice Cloning TTS, and LLM Prompt Enhancement).
 
 ---
 
@@ -28,11 +28,11 @@ High-performance, modular, and asynchronous Rust application orchestrating gener
   - Transform, restyle, or synthesize new scenes from a reference image with fine-grained denoise strength (`--strength`).
   - **Interactive Inpainting Canvas**: Paint custom masks directly in the browser to modify specific regions while preserving the rest.
   - **ControlNet Spatial Guidance**: Precise edge (Canny) and Depth Map guidance for structural retention.
-  - Supports both **RunPod Cloud (Flux / SDXL)** and **Local GPU (Diffusers)**.
+  - Supports both **Cloud Inpainting (Flux / SDXL)** and **Local GPU (Diffusers)**.
 - **Text-to-Image (`txt2img`)**:
   - High-speed image generation powered by **Flux 1 Schnell** or **Local Diffusers (SDXL Turbo / SDXL Lightning)** with custom steps, seeds, and dimensions.
 - **LoRA Training Studio (`train-lora` / Web Studio)**:
-  - Fine-tune custom concepts (faces, commercial products, artistic styles) directly on your Pod GPU.
+  - Fine-tune custom concepts (faces, commercial products, artistic styles) directly on your Pod GPU (CloudCompositing Pro).
   - Built-in dataset manager with multi-image drag-and-drop upload and AI vision **Auto-Captioning**.
   - Advanced VRAM optimizations: pre-cached VAE latents, FP16 mixed precision, and gradient accumulation.
   - Automatic export to `.safetensors` immediately usable across Text-to-Image and Image-to-Image.
@@ -45,6 +45,15 @@ High-performance, modular, and asynchronous Rust application orchestrating gener
   - Modular, extensible Rust stages.
   - Animated live status spinners, colored logs, and non-blocking asynchronous execution.
   - Pure `rustls` networking (no system OpenSSL dependencies required).
+
+---
+
+## 👑 Licensing: Community vs Pro
+
+CloudCompositing.com operates on an open, transparent model:
+- **Community Edition (Free)**: Text-to-Image, Inpainting, FaceSwap on images, Kokoro TTS, basic video generation.
+- **Pro Edition**: Unlocks **LoRA Fine-Tuning Studio**, **High-Definition Video FaceSwap**, **XTTS Voice Cloning**, and Commercial Rights.
+- **Activation**: Enter your license key in the Web UI or define the `CLOUDCOMPOSITING_LICENSE_KEY=CC-PRO-XXXX-XXXX-XXXX` environment variable.
 
 ---
 
@@ -68,11 +77,11 @@ The compiled binary will be located at `target/release/runpod-pipeline`.
 
 ---
 
-## 🐳 Docker & RunPod Cloud Deployment
+## 🐳 Docker & Pod Deployment
 
-RunPod Studio provides two specialized container images:
+CloudCompositing.com provides two specialized container images:
 - **GPU Edition** (`ghcr.io/nikool172/cloudcompositing:v1.0.0-gpu` or `:latest-gpu`): Full environment with CUDA 12.1, PyTorch GPU, ONNX Runtime GPU, Diffusers, and local model inference capabilities.
-- **CPU Edition** (`ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu` or `:latest-cpu`): Lightweight container (~1.5 GB) designed for affordable RunPod CPU Pods ($0.02–$0.05/hr) acting as a cloud orchestrator for Serverless APIs and lightweight local CPU tasks (Kokoro TTS).
+- **CPU Edition** (`ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu` or `:latest-cpu`): Lightweight container (~1.5 GB) designed for affordable CPU Pods ($0.02–$0.05/hr) acting as an orchestrator for APIs and lightweight local CPU tasks (Kokoro TTS).
 
 ```bash
 # Pull the GPU container image
@@ -86,11 +95,11 @@ docker pull ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu
 docker run -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu
 ```
 
-### Deploying as a 1-Click RunPod Template
+### Deploying as a 1-Click Pod Template
 
 #### Option A: GPU Template (Local Model Inference & AI Studio)
 1. In the **RunPod Console** → **Templates** → **New Template**:
-   - **Template Name**: `RunPod Studio (GPU)`
+   - **Template Name**: `CloudCompositing.com (GPU)`
    - **Compute Type**: `GPU`
    - **Image Name**: `ghcr.io/nikool172/cloudcompositing:v1.0.0-gpu`
    - **Container Disk**: `30 GB`
@@ -100,12 +109,13 @@ docker run -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcomp
      - `PORT` = `3000`
      - `RUNPOD_API_KEY` = `your_runpod_api_key`
      - `HF_TOKEN` = `your_huggingface_token` (optional, for LTX-Video)
+     - `CLOUDCOMPOSITING_LICENSE_KEY` = `your_pro_license_key` (optional)
 2. Deploy on any GPU pod (e.g. RTX 4090, A40, L40S).
 3. Click **Connect → Connect to HTTP Service [Port 3000]** to launch the Studio.
 
 #### Option B: CPU Template (Ultra-low cost API Orchestrator)
 1. In the **RunPod Console** → **Templates** → **New Template**:
-   - **Template Name**: `RunPod Studio (CPU Light)`
+   - **Template Name**: `CloudCompositing.com (CPU Light)`
    - **Compute Type**: `CPU`
    - **Image Name**: `ghcr.io/nikool172/cloudcompositing:v1.0.0-cpu`
    - **Container Disk**: `10 GB`
@@ -113,7 +123,7 @@ docker run -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcomp
    - **Environment Variables**:
      - `PORT` = `3000`
      - `RUNPOD_API_KEY` = `your_runpod_api_key`
-2. Deploy on any RunPod CPU pod (~$0.02/hour).
+2. Deploy on any CPU pod (~$0.02/hour).
 3. Click **Connect → Connect to HTTP Service [Port 3000]**.
 
 ---
@@ -312,7 +322,7 @@ Synthesize speech or clone voices locally:
 # Kokoro-82M Ultra-fast synthesis
 python3 src/tts_engine.py \
   --engine kokoro \
-  --text "Welcome to RunPod Studio. Experience state of the art generative AI." \
+  --text "Welcome to CloudCompositing.com. Experience state of the art generative AI." \
   --voice af_bella \
   --output welcome.wav
 

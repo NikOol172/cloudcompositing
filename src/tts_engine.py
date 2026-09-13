@@ -255,7 +255,7 @@ def main():
     device = resolve_device(args.device)
 
     print(f"==================================================")
-    print(f"🎙️ RunPod Studio TTS Engine")
+    print(f"🎙️ CloudCompositing.com TTS Engine")
     print(f" • Engine    : {args.engine.upper()}")
     print(f" • Language  : {args.language}")
     print(f" • Voice/Ref : {args.voice or args.speaker_wav or 'Default'}")

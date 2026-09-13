@@ -1,5 +1,6 @@
 mod cli;
 mod client;
+pub mod licensing;
 mod models;
 mod pipeline;
 mod server;

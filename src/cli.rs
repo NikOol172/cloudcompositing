@@ -47,7 +47,7 @@ pub enum Commands {
     #[command(name = "faceswap", alias = "face-swap")]
     FaceSwap(FaceSwapArgs),
 
-    /// Lancer l'interface web RunPod Studio & Media Manager.
+    /// Lancer l'interface web CloudCompositing.com & Media Manager.
     #[command(name = "serve", alias = "ui")]
     Serve(ServeArgs),
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RunPod Studio Model Downloader
+CloudCompositing.com Model Downloader
 Downloads Hugging Face models (including gated models like Lightricks/LTX-Video)
 with real-time progress reporting and clear authorization error handling.
 """
@@ -25,7 +25,7 @@ def main():
     hf_token = args.token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
 
     print(f"========================================================", flush=True)
-    print(f"⬇️  RunPod Studio Model Downloader", flush=True)
+    print(f"⬇️  CloudCompositing.com Model Downloader", flush=True)
     print(f"📦 Target Model : {model_id}", flush=True)
     if hf_token:
         masked = hf_token[:4] + "..." + hf_token[-4:] if len(hf_token) > 8 else "***"

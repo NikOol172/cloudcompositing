@@ -52,6 +52,7 @@ datasets/
 .env.*
 !.env.example
 .settings.json
+.license.json
 
 # IDE / System
 .agents/

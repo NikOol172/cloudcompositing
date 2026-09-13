@@ -1,4 +1,4 @@
-// RunPod Studio Frontend JavaScript
+// CloudCompositing.com Frontend JavaScript
 
 let allMedia = [];
 let allJobs = [];
@@ -11,6 +11,7 @@ let currentPickerType = 'all';
 let pollingInterval = null;
 
 let currentLang = 'en';
+let currentLicense = { tier: 'community', is_pro: false, masked_key: null };
 let systemInfo = { has_gpu: false, gpu_name: null, vram_mb: null };
 
 const TRANSLATIONS = {
@@ -23,9 +24,9 @@ const TRANSLATIONS = {
     nav_settings: "Settings & API",
     btn_mobile_access: "📱 Mobile Pod Access",
     btn_mobile_badge: "📱 Pod Mobile",
-    mobile_modal_title: "📱 Mobile RunPod Access",
-    mobile_modal_desc: "Scan this QR code with your smartphone camera to access and control your RunPod Studio directly from your mobile device:",
-    mobile_url_label: "RunPod Mobile Web URL",
+    mobile_modal_title: "📱 Mobile Pod Access",
+    mobile_modal_desc: "Scan this QR code with your smartphone camera to access and control CloudCompositing.com directly from your mobile device:",
+    mobile_url_label: "CloudCompositing Mobile Web URL",
     btn_copy_url: "📋 Copy URL",
     btn_open_tab: "↗️ Open in New Tab",
     mobile_tip: "💡 Tip: Open this URL in Safari (iOS) or Chrome (Android) and add it to your home screen to use it like a native mobile app!",
@@ -183,7 +184,7 @@ const TRANSLATIONS = {
 
 function toggleLanguage() {
   currentLang = 'en';
-  localStorage.setItem('runpod_studio_lang', 'en');
+  localStorage.setItem('cloudcompositing_lang', 'en');
   applyLanguage('en');
 }
 
@@ -277,6 +278,7 @@ function initApp() {
   loadSettings();
   fetchBalance(false);
   fetchSystemInfo();
+  fetchLicenseStatus();
   applyLanguage(currentLang);
 
   document.getElementById('t2v-video-model')?.addEventListener('change', updateLtxBanners);
@@ -3163,6 +3165,12 @@ async function handleLoraTrainSubmit(e) {
     e.stopPropagation();
   }
 
+  if (!currentLicense.is_pro) {
+    openLicenseModal();
+    showToast('👑 LoRA Training Studio requires a CloudCompositing Pro license.', 'warning');
+    return;
+  }
+
   const select = document.getElementById('lora-dataset-select');
   const datasetName = select?.value;
   if (!datasetName || datasetName === '__new__') {
@@ -3204,6 +3212,10 @@ async function handleLoraTrainSubmit(e) {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    if (data.pro_required) {
+      openLicenseModal();
+      throw new Error(data.error || 'Pro license required');
+    }
     if (!res.ok) throw new Error(data.error || 'Error starting training');
 
     showToast(`🚀 LoRA training started! (Job ${data.id})`, 'success');
@@ -3234,11 +3246,201 @@ function useTrainedLora(safetensorsFile) {
   showToast(`LoRA '${safetensorsFile}' selected for Text-to-Image generation!`, 'success');
 }
 
+// ----------------------------------------------------
+// CloudCompositing.com Licensing Management
+// ----------------------------------------------------
+async function fetchLicenseStatus() {
+  try {
+    const res = await fetch('/api/license');
+    if (res.ok) {
+      currentLicense = await res.json();
+      applyLicenseUI(currentLicense);
+    }
+  } catch (err) {
+    console.warn('License check failed', err);
+  }
+}
+
+function applyLicenseUI(lic) {
+  const isPro = !!(lic && lic.is_pro);
+
+  // Sidebar badge
+  const sidebarBadge = document.getElementById('sidebar-license-badge');
+  if (sidebarBadge) {
+    sidebarBadge.textContent = isPro ? '👑 PRO ⚡' : 'COMMUNITY';
+    sidebarBadge.className = `license-badge-pill ${isPro ? 'pro' : 'community'}`;
+    sidebarBadge.title = isPro ? 'CloudCompositing Pro - Active' : 'Community Edition - Click to upgrade';
+  }
+
+  // Mobile top bar pill
+  const mobilePill = document.getElementById('mobile-license-pill');
+  if (mobilePill) {
+    mobilePill.textContent = isPro ? '👑 PRO' : 'COMMUNITY';
+    mobilePill.className = `mobile-license-pill ${isPro ? 'pro' : 'community'}`;
+  }
+
+  // Settings Card
+  const settingsCard = document.getElementById('settings-license-card');
+  const settingsTierBadge = document.getElementById('settings-license-tier-badge');
+  const settingsSubInfo = document.getElementById('settings-license-sub-info');
+  const btnUpgrade = document.getElementById('btn-upgrade-license');
+
+  if (settingsCard) {
+    if (isPro) {
+      settingsCard.classList.add('is-pro');
+    } else {
+      settingsCard.classList.remove('is-pro');
+    }
+  }
+
+  if (settingsTierBadge) {
+    settingsTierBadge.textContent = isPro ? '👑 PRO ⚡' : 'COMMUNITY';
+    settingsTierBadge.className = `badge-tier ${isPro ? 'pro' : 'community'}`;
+  }
+
+  if (settingsSubInfo) {
+    settingsSubInfo.textContent = isPro
+      ? `CloudCompositing Pro Activated — Key: ${lic.masked_key || 'Active'}`
+      : 'Free Community Edition — Limited features';
+  }
+
+  if (btnUpgrade) {
+    btnUpgrade.style.display = isPro ? 'none' : 'inline-flex';
+  }
+
+  // Modal elements
+  const modalTier = document.getElementById('modal-current-tier');
+  const modalDesc = document.getElementById('modal-tier-desc');
+  const inputSection = document.getElementById('license-input-section');
+  const activeSection = document.getElementById('license-active-section');
+  const maskedKeyEl = document.getElementById('active-license-key-masked');
+
+  if (modalTier) {
+    modalTier.textContent = isPro ? '👑 PRO ⚡' : 'COMMUNITY';
+    modalTier.className = `badge-tier ${isPro ? 'pro' : 'community'}`;
+  }
+
+  if (modalDesc) {
+    modalDesc.textContent = isPro
+      ? 'All Pro capabilities are active on this instance (LoRA Studio, HD FaceSwap Video, Voice Cloning, Commercial Rights).'
+      : 'Unlock custom LoRA fine-tuning, high-definition FaceSwap video, voice cloning, and commercial license.';
+  }
+
+  if (inputSection && activeSection) {
+    if (isPro) {
+      inputSection.style.display = 'none';
+      activeSection.style.display = 'block';
+      if (maskedKeyEl) maskedKeyEl.textContent = lic.masked_key || 'CC-PRO-VALID';
+    } else {
+      inputSection.style.display = 'block';
+      activeSection.style.display = 'none';
+    }
+  }
+
+  // Feature indicators in Settings
+  const loraFeat = document.getElementById('feat-lora-status');
+  const faceswapFeat = document.getElementById('feat-faceswap-video-status');
+  const xttsFeat = document.getElementById('feat-xtts-status');
+  const commFeat = document.getElementById('feat-commercial-status');
+
+  if (loraFeat) {
+    loraFeat.textContent = isPro ? '✓ Unlocked' : '👑 Pro Only';
+    loraFeat.className = `feat-status ${isPro ? 'unlocked' : 'pro-only'}`;
+  }
+  if (faceswapFeat) {
+    faceswapFeat.textContent = isPro ? '✓ Unlocked' : '👑 Pro Only';
+    faceswapFeat.className = `feat-status ${isPro ? 'unlocked' : 'pro-only'}`;
+  }
+  if (xttsFeat) {
+    xttsFeat.textContent = isPro ? '✓ Unlocked' : '👑 Pro Only';
+    xttsFeat.className = `feat-status ${isPro ? 'unlocked' : 'pro-only'}`;
+  }
+  if (commFeat) {
+    commFeat.textContent = isPro ? '✓ Included' : '👑 Pro Only';
+    commFeat.className = `feat-status ${isPro ? 'unlocked' : 'pro-only'}`;
+  }
+}
+
+function openLicenseModal() {
+  const modal = document.getElementById('license-modal');
+  if (modal) {
+    modal.classList.add('active');
+    const errEl = document.getElementById('license-activation-error');
+    if (errEl) errEl.style.display = 'none';
+  }
+}
+
+function closeLicenseModal() {
+  const modal = document.getElementById('license-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function activateLicenseKey() {
+  const input = document.getElementById('license-key-input');
+  const errEl = document.getElementById('license-activation-error');
+  const btn = document.getElementById('btn-activate-license');
+  const key = input ? input.value.trim() : '';
+
+  if (!key) {
+    if (errEl) {
+      errEl.textContent = 'Please enter a license key.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/license/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ license_key: key })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Invalid license key');
+    }
+    currentLicense = data;
+    applyLicenseUI(currentLicense);
+    if (input) input.value = '';
+    showToast('👑 CloudCompositing Pro Activated Successfully!', 'success');
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || 'Activation failed';
+      errEl.style.display = 'block';
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function deactivateLicenseKey() {
+  if (!confirm('Are you sure you want to deactivate CloudCompositing Pro on this pod?')) return;
+  try {
+    const res = await fetch('/api/license/deactivate', { method: 'POST' });
+    const data = await res.json();
+    currentLicense = data;
+    applyLicenseUI(currentLicense);
+    showToast('License deactivated. Returned to Community Edition.', 'info');
+  } catch (err) {
+    showToast('Deactivation error: ' + err.message, 'error');
+  }
+}
+
 window.handleLoraDatasetChange = handleLoraDatasetChange;
 window.handleLoraFilesUpload = handleLoraFilesUpload;
 window.triggerAutoCaption = triggerAutoCaption;
 window.saveDatasetCaption = saveDatasetCaption;
 window.handleLoraTrainSubmit = handleLoraTrainSubmit;
 window.useTrainedLora = useTrainedLora;
+
+window.openLicenseModal = openLicenseModal;
+window.closeLicenseModal = closeLicenseModal;
+window.activateLicenseKey = activateLicenseKey;
+window.deactivateLicenseKey = deactivateLicenseKey;
+window.fetchLicenseStatus = fetchLicenseStatus;
+
 
 

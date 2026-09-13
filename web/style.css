@@ -2758,4 +2758,211 @@ audio {
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
+/* ====================================================
+   Licensing Badges & Plan Cards (CloudCompositing.com)
+   ==================================================== */
+.license-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.license-badge-pill.community,
+.badge-tier.community,
+.mobile-license-pill.community {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.license-badge-pill.community:hover,
+.mobile-license-pill.community:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.license-badge-pill.pro,
+.badge-tier.pro,
+.mobile-license-pill.pro {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(236, 72, 153, 0.25));
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+  animation: proPulse 3s infinite ease-in-out;
+}
+
+@keyframes proPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.45);
+  }
+}
+
+.mobile-license-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.pill-pro-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b, #ec4899);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.license-status-card {
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.license-status-card.is-pro {
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), rgba(255, 255, 255, 0.02) 60%);
+}
+
+.license-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.license-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.license-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.license-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.license-tier-row h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.license-sub-info {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+  display: block;
+}
+
+.license-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.license-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.license-feature-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.license-feature-item .feat-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.license-feature-item .feat-status {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.license-feature-item .feat-status.check {
+  color: #10b981;
+}
+
+.license-feature-item .feat-status.pro-only {
+  color: #f59e0b;
+}
+
+.license-feature-item .feat-status.unlocked {
+  color: #38bdf8;
+}
+
+/* Modal details */
+.license-modal-hero {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.license-current-tier-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.license-current-tier-box .label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.license-pro-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.86rem;
+  color: var(--text-main);
+}
+
 

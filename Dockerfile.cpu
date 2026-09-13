@@ -37,7 +37,7 @@ RUN cargo build --release --bin runpod-pipeline
 FROM ubuntu:22.04
 
 LABEL maintainer="NikOol172"
-LABEL description="RunPod Studio (CPU Version) - Web Interface & Cloud AI Orchestrator"
+LABEL description="CloudCompositing.com (CPU Version) - Web Interface & Cloud AI Orchestrator"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1

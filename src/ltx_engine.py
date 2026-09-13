@@ -50,7 +50,7 @@ def main():
     start_time = time.time()
 
     print("========================================================", flush=True)
-    print("⚡ RunPod Studio - Local LTX-Video 2.5 Engine", flush=True)
+    print("⚡ CloudCompositing.com - Local LTX-Video 2.5 Engine", flush=True)
     print(f"🎬 Prompt       : {args.prompt[:80]}...", flush=True)
     if args.image:
         print(f"🖼️ Source Image : {args.image}", flush=True)
