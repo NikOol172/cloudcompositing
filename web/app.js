@@ -199,7 +199,14 @@ function applyLanguage(lang) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (dict[key]) {
-      el.textContent = dict[key];
+      const childValue = el.querySelector('strong[id], span[id]');
+      if (childValue) {
+        const saved = childValue.cloneNode(true);
+        el.textContent = dict[key] + ' ';
+        el.appendChild(saved);
+      } else {
+        el.textContent = dict[key];
+      }
     }
   });
 
@@ -3030,6 +3037,14 @@ function initLoraTraining() {
       if (e.dataTransfer && e.dataTransfer.files.length > 0) {
         uploadLoraFilesList(e.dataTransfer.files);
       }
+    });
+  }
+
+  const stepsSlider = document.getElementById('lora-train-steps');
+  if (stepsSlider) {
+    stepsSlider.addEventListener('input', (e) => {
+      const valEl = document.getElementById('lora-steps-val');
+      if (valEl) valEl.textContent = e.target.value;
     });
   }
 }

@@ -305,8 +305,8 @@
 
               <div class="form-row">
                 <div class="form-group col">
-                  <label for="i2i-strength" data-i18n="label_denoise">Transformation Strength (Denoise): <span id="i2i-strength-val">0.70</span></label>
-                  <input type="range" id="i2i-strength" min="0.1" max="1.0" step="0.05" value="0.70" oninput="document.getElementById('i2i-strength-val').innerText = this.value">
+                  <label for="i2i-strength"><span data-i18n="label_denoise">Transformation Strength (Denoise):</span> <span id="i2i-strength-val">0.70</span></label>
+                  <input type="range" id="i2i-strength" min="0.1" max="1.0" step="0.05" value="0.70" oninput="const el = document.getElementById('i2i-strength-val'); if(el) el.innerText = this.value">
                 </div>
                 <div class="form-group col">
                   <label for="i2i-mode" data-i18n="gen_engine">Generation Engine</label>
@@ -829,8 +829,8 @@
 
                 <div class="form-row">
                   <div class="form-group col">
-                    <label for="lora-train-steps" data-i18n="label_lora_steps">Training Steps: <strong id="lora-steps-val" class="accent-val">500</strong></label>
-                    <input type="range" id="lora-train-steps" min="100" max="2500" step="50" value="500" oninput="document.getElementById('lora-steps-val').textContent = this.value">
+                    <label for="lora-train-steps"><span data-i18n="label_lora_steps">Training Steps:</span> <strong id="lora-steps-val" class="accent-val">500</strong></label>
+                    <input type="range" id="lora-train-steps" min="100" max="2500" step="50" value="500" oninput="const el = document.getElementById('lora-steps-val'); if(el) el.textContent = this.value">
                     <small class="form-help" data-i18n="lora_steps_help">500 steps ≈ 10-15 min on standard GPU for 10 images.</small>
                   </div>
                   <div class="form-group col">
