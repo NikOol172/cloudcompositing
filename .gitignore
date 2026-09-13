@@ -53,6 +53,7 @@ datasets/
 !.env.example
 .settings.json
 .license.json
+website/
 
 # IDE / System
 .agents/
