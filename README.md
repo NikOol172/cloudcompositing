@@ -105,11 +105,11 @@ docker run -p 3000:3000 -e RUNPOD_API_KEY="your_key" ghcr.io/nikool172/cloudcomp
    - **Container Disk**: `30 GB`
    - **Volume Disk**: `20+ GB` (mount to `/workspace` or `/app/outputs`)
    - **Expose HTTP Ports**: `3000`
-   - **Environment Variables**:
-     - `PORT` = `3000`
-     - `RUNPOD_API_KEY` = `your_runpod_api_key`
-     - `HF_TOKEN` = `your_huggingface_token` (optional, for LTX-Video)
-     - `CLOUDCOMPOSITING_LICENSE_KEY` = `your_pro_license_key` (optional)
+    - **Environment Variables**:
+      - `PORT` = `3000`
+      - `RUNPOD_API_KEY` = `your_runpod_api_key` *(optional on GPU pods — local models run directly on hardware)*
+      - `HF_TOKEN` = `your_huggingface_token` *(optional, for gated models like LTX-Video)*
+      - `CLOUDCOMPOSITING_LICENSE_KEY` = `your_pro_license_key` *(optional)*
 2. Deploy on any GPU pod (e.g. RTX 4090, A40, L40S).
 3. Click **Connect → Connect to HTTP Service [Port 3000]** to launch the Studio.
 
