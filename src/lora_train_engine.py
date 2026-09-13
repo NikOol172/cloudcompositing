@@ -349,6 +349,7 @@ def main():
     epoch = 0
     running_loss = 0.0
     accumulated_steps = 0
+    consecutive_nans = 0
 
     unet.train()
     optimizer.zero_grad()
@@ -396,9 +397,16 @@ def main():
                 loss = loss / grad_accum
 
             if torch.isnan(loss) or torch.isinf(loss):
-                print(f"[WARN] NaN/Inf detected in loss at step {current_step}, skipping batch.", file=sys.stderr)
+                consecutive_nans += 1
+                print(f"[WARN] NaN/Inf detected in loss at step {current_step} ({consecutive_nans}/10), skipping batch.", file=sys.stderr)
+                if consecutive_nans >= 10:
+                    has_pred_nan = torch.isnan(model_pred).any().item()
+                    has_latent_nan = torch.isnan(latent).any().item()
+                    print(f"[FATAL ERROR] 10 consecutive NaN losses detected. Diagnostic: model_pred_nan={has_pred_nan}, latent_nan={has_latent_nan}", file=sys.stderr)
+                    sys.exit(1)
                 optimizer.zero_grad()
                 continue
+            consecutive_nans = 0
 
             loss.backward()
 
