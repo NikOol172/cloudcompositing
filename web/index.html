@@ -872,7 +872,12 @@
           <div class="card glass-card studio-live-panel">
             <div class="live-header">
               <h3>⚡ Live Preview & Activity</h3>
-              <span class="badge" id="live-job-status-badge">Idle</span>
+              <div class="live-header-actions" style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-secondary btn-sm" id="btn-copy-live-logs" onclick="copyLiveLogs(this)" title="Copy all logs to clipboard" style="padding: 3px 10px; font-size: 0.76rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                  📋 Copy Logs
+                </button>
+                <span class="badge" id="live-job-status-badge">Idle</span>
+              </div>
             </div>
 
             <div class="live-preview-container" id="live-preview-box">

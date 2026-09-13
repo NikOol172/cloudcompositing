@@ -903,12 +903,17 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text;
 }
 
 .log-line {
   line-height: 1.4;
   color: var(--text-muted);
   word-break: break-all;
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 .log-line.info { color: #93c5fd; }

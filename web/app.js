@@ -1806,12 +1806,20 @@ function updateLivePanel(latestJob) {
     return;
   }
 
-  // Update logs without interrupting media playback
+  // Update logs without destroying user selection or re-rendering unnecessarily
   if (activeOrLatest.logs && activeOrLatest.logs.length > 0) {
     const container = document.getElementById('live-logs-container');
     if (container) {
-      container.innerHTML = activeOrLatest.logs.map(log => `<div class="log-line ${log.level}">${log.message}</div>`).join('');
-      container.scrollTop = container.scrollHeight;
+      const logsKey = activeOrLatest.logs.map(l => `${l.level}:${l.message}`).join('|');
+      if (container.dataset.logsKey !== logsKey) {
+        const selection = window.getSelection();
+        const isSelectingInside = selection && selection.toString().length > 0 && container.contains(selection.anchorNode);
+        if (!isSelectingInside) {
+          container.innerHTML = activeOrLatest.logs.map(log => `<div class="log-line ${log.level}">${escapeHtml(log.message)}</div>`).join('');
+          container.dataset.logsKey = logsKey;
+          container.scrollTop = container.scrollHeight;
+        }
+      }
     }
   }
 
@@ -1988,6 +1996,49 @@ function appendTerminalLog(msg, type = 'info') {
   line.innerText = msg;
   container.appendChild(line);
   container.scrollTop = container.scrollHeight;
+}
+
+function copyLiveLogs(btn) {
+  const container = document.getElementById('live-logs-container');
+  if (!container) return;
+  const text = container.innerText || container.textContent || '';
+  if (!text.trim()) {
+    showToast('No logs to copy', 'info');
+    return;
+  }
+  const handleSuccess = () => {
+    showToast('✓ Logs copied to clipboard!', 'success');
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied!';
+      setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    }
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(handleSuccess).catch(() => {
+      fallbackCopyText(text, handleSuccess);
+    });
+  } else {
+    fallbackCopyText(text, handleSuccess);
+  }
+}
+
+function fallbackCopyText(text, onSuccess) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    if (onSuccess) onSuccess();
+  } catch (err) {
+    console.error('Fallback copy error:', err);
+  }
+  document.body.removeChild(textarea);
 }
 
 // ----------------------------------------------------
