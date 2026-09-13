@@ -44,34 +44,34 @@ def main():
         from huggingface_hub import snapshot_download
         from huggingface_hub.utils import GatedRepoError, RepositoryNotFoundError
 
-    cache_dir = args.cache_dir
-    if not cache_dir:
-        # Prioritize /workspace for RunPod persistence
-        if os.path.exists("/workspace"):
-            cache_dir = "/workspace/.hf_cache/hub"
-        else:
-            cache_dir = os.path.abspath(".hf_cache/hub")
-
-    os.makedirs(cache_dir, exist_ok=True)
-    print(f"📁 Cache folder : {cache_dir}", flush=True)
-
     local_dir = args.local_dir
+    cache_dir = args.cache_dir
+
+    kwargs = {
+        "repo_id": model_id,
+        "token": hf_token,
+    }
+
     if local_dir:
         os.makedirs(local_dir, exist_ok=True)
         print(f"📁 Destination folder : {local_dir}", flush=True)
+        # Download directly to local_dir without duplicating files into cache_dir (saves 50% disk space)
+        kwargs["local_dir"] = local_dir
+    else:
+        if not cache_dir:
+            if os.path.exists("/workspace"):
+                cache_dir = "/workspace/.hf_cache/hub"
+            else:
+                cache_dir = os.path.abspath(".hf_cache/hub")
+        os.makedirs(cache_dir, exist_ok=True)
+        print(f"📁 Cache folder : {cache_dir}", flush=True)
+        kwargs["cache_dir"] = cache_dir
 
     start_time = time.time()
 
     try:
         print(f"[STATUS] Connecting to Hugging Face and verifying permissions...", flush=True)
-        download_path = snapshot_download(
-            repo_id=model_id,
-            token=hf_token,
-            cache_dir=cache_dir,
-            local_dir=local_dir,
-            local_dir_use_symlinks="auto" if not local_dir else False,
-            resume_download=True,
-        )
+        download_path = snapshot_download(**kwargs)
 
         elapsed = time.time() - start_time
         print(f"\n[SUCCESS] Model '{model_id}' downloaded and verified successfully!", flush=True)
@@ -101,6 +101,13 @@ def main():
             print(f"\n[GATED_REPO_ERROR] License not accepted for '{model_id}' (Error 403).", file=sys.stderr, flush=True)
             print(f"Please accept the license on https://huggingface.co/{model_id}", file=sys.stderr, flush=True)
             sys.exit(43)
+        elif "disk quota exceeded" in err_str or "122" in err_str or "no space left" in err_str:
+            print(f"\n[DISK_FULL_ERROR] Disk quota exceeded while downloading '{model_id}'.", file=sys.stderr, flush=True)
+            print("Please clean up unused caches to free disk space:", file=sys.stderr, flush=True)
+            print("  rm -rf /workspace/models/ltx-video", file=sys.stderr, flush=True)
+            print("  rm -rf /workspace/.hf_cache/hub/tmp*", file=sys.stderr, flush=True)
+            print("  pip cache purge", file=sys.stderr, flush=True)
+            sys.exit(122)
         else:
             print(f"\n[ERROR] Download failed: {e}", file=sys.stderr, flush=True)
             sys.exit(1)
