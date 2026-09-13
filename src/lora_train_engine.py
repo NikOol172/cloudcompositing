@@ -111,6 +111,28 @@ def main():
     # Imports
     try:
         import torch
+        # PyTorch XPU shim for Diffusers >= 0.31 compatibility on PyTorch without XPU
+        if not hasattr(torch, "xpu"):
+            class _DummyXpu:
+                @staticmethod
+                def is_available(): return False
+                @staticmethod
+                def device_count(): return 0
+                @staticmethod
+                def empty_cache(): pass
+                @staticmethod
+                def manual_seed(seed=0): pass
+                @staticmethod
+                def reset_peak_memory_stats(device=None): pass
+                @staticmethod
+                def reset_max_memory_allocated(device=None): pass
+                @staticmethod
+                def max_memory_allocated(device=None): return 0
+                @staticmethod
+                def synchronize(device=None): pass
+                def __getattr__(self, name): return lambda *args, **kwargs: None
+            torch.xpu = _DummyXpu()
+
         import torch.nn.functional as F
         from torchvision import transforms
         from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel

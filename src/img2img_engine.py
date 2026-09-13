@@ -69,6 +69,16 @@ def main():
 
     try:
         import torch
+        if not hasattr(torch, "xpu"):
+            class _DummyXpu:
+                @staticmethod
+                def is_available(): return False
+                @staticmethod
+                def device_count(): return 0
+                @staticmethod
+                def empty_cache(): pass
+                def __getattr__(self, name): return lambda *args, **kwargs: None
+            torch.xpu = _DummyXpu()
         from diffusers import AutoPipelineForImage2Image, AutoPipelineForInpainting
     except ImportError:
         print(
