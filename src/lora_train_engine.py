@@ -145,7 +145,7 @@ def main():
         from torchvision import transforms
         from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
         from diffusers.training_utils import cast_training_params
-        from transformers import AutoTokenizer, CLIPTextModel
+        from transformers import AutoTokenizer, CLIPTextModel, CLIPTextModelWithProjection
         from peft import LoraConfig, get_peft_model
         from safetensors.torch import save_file
     except ImportError as e:
@@ -177,16 +177,26 @@ def main():
     raw_samples = load_dataset_samples(dataset_path, args.instance_prompt, args.resolution)
     print(f"[INFO] Loaded {len(raw_samples)} images for LoRA training.")
 
-    # 1. Load VAE and Tokenizer / Text Encoder to Pre-cache Latents and Text Embeddings
-    print(f"[INFO] Loading base model components from: '{args.base_model}'...")
+    is_sdxl = "xl" in args.base_model.lower()
     variant = "fp16" if (device.type == "cuda" and args.mixed_precision in ("fp16",)) else None
 
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model, subfolder="tokenizer", use_fast=False)
-    
-    try:
-        text_encoder = CLIPTextModel.from_pretrained(args.base_model, subfolder="text_encoder", torch_dtype=weight_dtype, variant=variant, low_cpu_mem_usage=True).to(device)
-    except Exception:
-        text_encoder = CLIPTextModel.from_pretrained(args.base_model, subfolder="text_encoder", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
+    # 1. Load VAE and Tokenizer / Text Encoder to Pre-cache Latents and Text Embeddings
+    print(f"[INFO] Loading base model components from: '{args.base_model}' (is_sdxl: {is_sdxl})...")
+
+    if is_sdxl:
+        tokenizer_1 = AutoTokenizer.from_pretrained(args.base_model, subfolder="tokenizer", use_fast=False)
+        tokenizer_2 = AutoTokenizer.from_pretrained(args.base_model, subfolder="tokenizer_2", use_fast=False)
+        text_encoder_1 = CLIPTextModel.from_pretrained(args.base_model, subfolder="text_encoder", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
+        text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(args.base_model, subfolder="text_encoder_2", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
+        text_encoder_1.eval()
+        text_encoder_2.eval()
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(args.base_model, subfolder="tokenizer", use_fast=False)
+        try:
+            text_encoder = CLIPTextModel.from_pretrained(args.base_model, subfolder="text_encoder", torch_dtype=weight_dtype, variant=variant, low_cpu_mem_usage=True).to(device)
+        except Exception:
+            text_encoder = CLIPTextModel.from_pretrained(args.base_model, subfolder="text_encoder", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
+        text_encoder.eval()
 
     try:
         vae = AutoencoderKL.from_pretrained(args.base_model, subfolder="vae", torch_dtype=weight_dtype, variant=variant, low_cpu_mem_usage=True).to(device)
@@ -194,9 +204,7 @@ def main():
         vae = AutoencoderKL.from_pretrained(args.base_model, subfolder="vae", torch_dtype=weight_dtype, low_cpu_mem_usage=True).to(device)
 
     noise_scheduler = DDPMScheduler.from_pretrained(args.base_model, subfolder="scheduler")
-
     vae.eval()
-    text_encoder.eval()
 
     # Preprocess images to normalized tensors: [-1, 1]
     transform = transforms.Compose([
@@ -216,27 +224,42 @@ def main():
             latent = latent_dist.sample() * vae.config.scaling_factor
             cached_latents.append(latent.squeeze(0).cpu())
 
-            # Encode caption to embedding
-            inputs = tokenizer(
-                caption,
-                padding="max_length",
-                max_length=tokenizer.model_max_length,
-                truncation=True,
-                return_tensors="pt"
-            ).input_ids.to(device)
-            text_embed = text_encoder(inputs)[0].squeeze(0)
-            # Pad text embedding sequence from 77 to 80 tokens (aligned to 16-byte boundaries)
-            # This fixes hardware out-of-bounds access in CUTLASS MemEfficient attention on specific GPU architectures
-            text_embed = F.pad(text_embed, (0, 0, 0, 3))
-            cached_embeddings.append(text_embed.cpu())
+            if is_sdxl:
+                ids_1 = tokenizer_1(caption, padding="max_length", max_length=tokenizer_1.model_max_length, truncation=True, return_tensors="pt").input_ids.to(device)
+                ids_2 = tokenizer_2(caption, padding="max_length", max_length=tokenizer_2.model_max_length, truncation=True, return_tensors="pt").input_ids.to(device)
+                h_1 = text_encoder_1(ids_1, output_hidden_states=True).hidden_states[-2]
+                enc_2 = text_encoder_2(ids_2, output_hidden_states=True)
+                h_2 = enc_2.hidden_states[-2]
+                pooled = enc_2.text_embeds
+                text_embed = torch.cat([h_1, h_2], dim=-1).squeeze(0).cpu()
+                pooled_embed = pooled.squeeze(0).cpu()
+                time_ids = torch.tensor([args.resolution, args.resolution, 0, 0, args.resolution, args.resolution], dtype=weight_dtype).cpu()
+                cached_embeddings.append((text_embed, pooled_embed, time_ids))
+            else:
+                inputs = tokenizer(
+                    caption,
+                    padding="max_length",
+                    max_length=tokenizer.model_max_length,
+                    truncation=True,
+                    return_tensors="pt"
+                ).input_ids.to(device)
+                text_embed = text_encoder(inputs)[0].squeeze(0)
+                text_embed = F.pad(text_embed, (0, 0, 0, 3))
+                cached_embeddings.append((text_embed.cpu(), None, None))
 
     print(f"[INFO] Cached {len(cached_latents)} latents and text representations.")
 
     # Free VAE, text encoder and raw PIL images from GPU and CPU RAM to free up memory
     del raw_samples
     del vae
-    del text_encoder
-    del tokenizer
+    if is_sdxl:
+        del text_encoder_1
+        del text_encoder_2
+        del tokenizer_1
+        del tokenizer_2
+    else:
+        del text_encoder
+        del tokenizer
     gc.collect()
     if device.type == "cuda":
         torch.cuda.empty_cache()
@@ -324,7 +347,8 @@ def main():
 
         for idx in indices:
             latent = cached_latents[idx].unsqueeze(0).to(device, dtype=weight_dtype)
-            encoder_hidden_states = cached_embeddings[idx].unsqueeze(0).to(device, dtype=weight_dtype)
+            embed_item = cached_embeddings[idx]
+            encoder_hidden_states = embed_item[0].unsqueeze(0).to(device, dtype=weight_dtype)
 
             # Sample noise to add to the latents
             noise = torch.randn_like(latent)
@@ -339,7 +363,14 @@ def main():
             # High-speed Memory-Efficient mixed-precision forward pass
             with torch.amp.autocast("cuda", enabled=use_amp, dtype=amp_dtype):
                 # Predict the noise residual with UNet + LoRA
-                model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
+                if is_sdxl:
+                    added_cond_kwargs = {
+                        "text_embeds": embed_item[1].unsqueeze(0).to(device, dtype=weight_dtype),
+                        "time_ids": embed_item[2].unsqueeze(0).to(device, dtype=weight_dtype),
+                    }
+                    model_pred = unet(noisy_latents, timesteps, encoder_hidden_states, added_cond_kwargs=added_cond_kwargs).sample
+                else:
+                    model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
                 # Get target for loss calculation
                 if noise_scheduler.config.prediction_type == "epsilon":
