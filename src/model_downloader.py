@@ -52,6 +52,25 @@ def main():
         "token": hf_token,
     }
 
+    # For repositories with massive collections of loose standalone checkpoints (e.g. Lightricks/LTX-Video which has 280 GB of dev checkpoints & GIFs),
+    # only download the essential Diffusers pipeline components (~11 GB) needed for inference:
+    if "ltx-video" in model_id.lower():
+        print("🎯 Optimizing download: filtering for Diffusers pipeline files (~11 GB) instead of 280 GB full repository.", flush=True)
+        kwargs["allow_patterns"] = [
+            "model_index.json",
+            "scheduler/*",
+            "text_encoder/*",
+            "tokenizer/*",
+            "transformer/*",
+            "vae/*",
+        ]
+        kwargs["ignore_patterns"] = [
+            "*.gif",
+            "media/*",
+            "ltxv-*",
+            "ltx-video-2b-*",
+        ]
+
     if local_dir:
         os.makedirs(local_dir, exist_ok=True)
         print(f"📁 Destination folder : {local_dir}", flush=True)
