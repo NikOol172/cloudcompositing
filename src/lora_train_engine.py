@@ -63,6 +63,27 @@ try:
 except Exception as _e:
     pass
 
+# Compatibility auto-check: NVIDIA Blackwell (sm_120 / RTX PRO 4500) requires PyTorch Nightly with CUDA 12.8
+try:
+    import torch
+    if torch.cuda.is_available() and not os.environ.get("_PYTORCH_BLACKWELL_ATTEMPTED"):
+        cap = torch.cuda.get_device_capability()
+        arch = f"sm_{cap[0]}{cap[1]}"
+        arch_list = torch.cuda.get_arch_list()
+        if arch not in arch_list and cap[0] >= 10:
+            print(f"[COMPAT] NVIDIA Blackwell GPU ({arch}) detected but not supported by current PyTorch ({torch.__version__}).", flush=True)
+            print("[COMPAT] Automatically upgrading PyTorch to Nightly (CUDA 12.8 / sm_120 support)... Please wait ~60s.", flush=True)
+            import subprocess
+            subprocess.run([
+                sys.executable, "-m", "pip", "install", "--pre", "torch", "torchvision", "torchaudio",
+                "--index-url", "https://download.pytorch.org/whl/nightly/cu128", "--upgrade"
+            ], check=True)
+            print("[COMPAT] PyTorch upgraded successfully! Restarting training process with native Blackwell support...", flush=True)
+            os.environ["_PYTORCH_BLACKWELL_ATTEMPTED"] = "1"
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+except Exception as _e:
+    print(f"[COMPAT WARNING] Blackwell auto-upgrade check: {_e}", flush=True)
+
 import argparse
 import time
 import math
