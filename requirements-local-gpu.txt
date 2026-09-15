@@ -6,7 +6,7 @@
 torch>=2.1.0
 torchvision>=0.16.0
 diffusers>=0.31.0
-transformers>=4.40.0
+transformers>=4.40.0,<4.45.0
 accelerate>=0.29.0
 peft>=0.10.0
 safetensors>=0.4.0
@@ -19,7 +19,7 @@ sentencepiece>=0.1.99
 onnxruntime>=1.17.0
 insightface>=0.7.3
 opencv-python>=4.8.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 pillow>=10.0.0
 imageio>=2.30.0
 imageio-ffmpeg>=0.4.9

@@ -19,6 +19,17 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(line_buffering=True)
 
+# Compatibility auto-check: PyTorch 2.2.0 in the RunPod image requires numpy<2 and transformers<4.45.0
+try:
+    import numpy as _np
+    if int(_np.__version__.split(".")[0]) >= 2:
+        print(f"[COMPAT] NumPy {_np.__version__} detected. Downgrading to numpy<2 and transformers<4.45.0 for PyTorch 2.2 compatibility...")
+        import subprocess
+        subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "numpy<2", "transformers<4.45.0"], check=False)
+        print("[COMPAT] Packages adjusted successfully.")
+except Exception as _e:
+    pass
+
 import argparse
 import time
 import math
