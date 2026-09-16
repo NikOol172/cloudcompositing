@@ -90,11 +90,20 @@ import math
 from pathlib import Path
 from PIL import Image
 
-# Ensure project local packages & caches are configured on Drive D:
-workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-os.environ["HF_HOME"] = os.path.join(workspace_root, ".hf_cache")
-os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(workspace_root, ".hf_cache", "hub")
-os.environ["TORCH_HOME"] = os.path.join(workspace_root, ".torch_cache")
+# Configure cache directories:
+# On Windows, keep in the project root (.hf_cache).
+# On Linux / RunPod, use the local NVMe container disk (/root/.cache/huggingface) to avoid NFS network volume flock() deadlocks!
+if os.name == "nt":
+    workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.environ["HF_HOME"] = os.path.join(workspace_root, ".hf_cache")
+    os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(workspace_root, ".hf_cache", "hub")
+    os.environ["TORCH_HOME"] = os.path.join(workspace_root, ".torch_cache")
+else:
+    cache_root = os.environ.get("HF_HOME") or "/root/.cache/huggingface"
+    os.environ["HF_HOME"] = cache_root
+    os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(cache_root, "hub")
+    os.environ["TORCH_HOME"] = os.environ.get("TORCH_HOME") or "/root/.cache/torch"
+
 os.environ["PYTHONIOENCODING"] = "utf-8"
 os.environ["PYTHONUNBUFFERED"] = "1"
 os.environ["SAFETENSORS_BACKEND"] = "pread"
