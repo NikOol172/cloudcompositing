@@ -380,9 +380,14 @@ async fn serve_media(
         .to_str()
         .ok_or(StatusCode::BAD_REQUEST)?;
 
-    let file_path = state.workspace_dir.join(sanitized_name);
+    let mut file_path = state.workspace_dir.join(sanitized_name);
     if !file_path.exists() {
-        return Err(StatusCode::NOT_FOUND);
+        let lora_path = state.workspace_dir.join("loras").join(sanitized_name);
+        if lora_path.exists() {
+            file_path = lora_path;
+        } else {
+            return Err(StatusCode::NOT_FOUND);
+        }
     }
 
     let mime_type = mime_guess::from_path(&file_path)
