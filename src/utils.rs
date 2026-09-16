@@ -30,17 +30,31 @@ pub fn get_python_binary() -> String {
 
 /// Configure les variables d'environnement pour l'exécution Python (caches sur disque du projet pour éviter de saturer C:).
 pub fn configure_python_command(cmd: &mut tokio::process::Command) {
-    let workspace = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let hf_cache = workspace.join(".hf_cache");
-    let hf_hub = hf_cache.join("hub");
-    let torch_cache = workspace.join(".torch_cache");
+    if cfg!(windows) {
+        let workspace = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let hf_cache = workspace.join(".hf_cache");
+        let hf_hub = hf_cache.join("hub");
+        let torch_cache = workspace.join(".torch_cache");
 
-    let _ = std::fs::create_dir_all(&hf_hub);
-    let _ = std::fs::create_dir_all(&torch_cache);
+        let _ = std::fs::create_dir_all(&hf_hub);
+        let _ = std::fs::create_dir_all(&torch_cache);
 
-    cmd.env("HF_HOME", &hf_cache);
-    cmd.env("HUGGINGFACE_HUB_CACHE", &hf_hub);
-    cmd.env("TORCH_HOME", &torch_cache);
+        cmd.env("HF_HOME", &hf_cache);
+        cmd.env("HUGGINGFACE_HUB_CACHE", &hf_hub);
+        cmd.env("TORCH_HOME", &torch_cache);
+    } else {
+        // On Linux / RunPod, network volume (/workspace) hangs on flock(). Use local NVMe!
+        let hf_cache = PathBuf::from("/root/.cache/huggingface");
+        let hf_hub = hf_cache.join("hub");
+        let torch_cache = PathBuf::from("/root/.cache/torch");
+
+        let _ = std::fs::create_dir_all(&hf_hub);
+        let _ = std::fs::create_dir_all(&torch_cache);
+
+        cmd.env("HF_HOME", &hf_cache);
+        cmd.env("HUGGINGFACE_HUB_CACHE", &hf_hub);
+        cmd.env("TORCH_HOME", &torch_cache);
+    }
     cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.env("PYTHONUNBUFFERED", "1");
     cmd.env("CUBLAS_WORKSPACE_CONFIG", ":4096:8");

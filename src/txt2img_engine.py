@@ -23,10 +23,10 @@ if os.name == "nt":
     os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(workspace_root, ".hf_cache", "hub")
     os.environ["TORCH_HOME"] = os.path.join(workspace_root, ".torch_cache")
 else:
-    cache_root = os.environ.get("HF_HOME") or "/root/.cache/huggingface"
+    cache_root = "/root/.cache/huggingface"
     os.environ["HF_HOME"] = cache_root
     os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(cache_root, "hub")
-    os.environ["TORCH_HOME"] = os.environ.get("TORCH_HOME") or "/root/.cache/torch"
+    os.environ["TORCH_HOME"] = "/root/.cache/torch"
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 os.environ["PYTHONUNBUFFERED"] = "1"
