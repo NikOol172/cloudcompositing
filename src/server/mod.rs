@@ -2029,6 +2029,7 @@ async fn generate_txt2img(
         .unwrap_or_default()
         .as_secs();
 
+    let is_local_job = payload.local.unwrap_or(false);
     let job = ServerJob {
         id: job_id.clone(),
         pipeline_type: "txt2img".to_string(),
@@ -2040,7 +2041,11 @@ async fn generate_txt2img(
         created_at: now,
         logs: vec![JobLog {
             level: "info".to_string(),
-            message: format!("Initializing Text-to-Image (Flux): '{}'", payload.prompt),
+            message: if is_local_job {
+                format!("Initializing Local Text-to-Image (GPU Diffusers): '{}'", payload.prompt)
+            } else {
+                format!("Initializing Text-to-Image (Flux): '{}'", payload.prompt)
+            },
         }],
         runpod_job_id: None,
         runpod_status: None,

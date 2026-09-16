@@ -8,14 +8,72 @@ import os
 import sys
 import site
 
-# Configure caches on Drive D: to prevent filling Drive C:
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-os.environ["HF_HOME"] = os.path.join(base_dir, ".hf_cache")
-os.environ["HF_HUB_CACHE"] = os.path.join(base_dir, ".hf_cache", "hub")
-os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(base_dir, ".hf_cache", "hub")
-os.environ["DIFFUSERS_CACHE"] = os.path.join(base_dir, ".hf_cache", "diffusers")
-os.environ["TRANSFORMERS_CACHE"] = os.path.join(base_dir, ".hf_cache", "transformers")
-os.environ["TORCH_HOME"] = os.path.join(base_dir, ".torch_cache")
+# Ensure unbuffered and line-buffered I/O
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(line_buffering=True)
+
+# Configure caches:
+# On Windows, keep in the project root (.hf_cache).
+# On Linux / RunPod, use the local NVMe container disk (/root/.cache/huggingface) to avoid NFS network volume flock() deadlocks!
+if os.name == "nt":
+    workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.environ["HF_HOME"] = os.path.join(workspace_root, ".hf_cache")
+    os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(workspace_root, ".hf_cache", "hub")
+    os.environ["TORCH_HOME"] = os.path.join(workspace_root, ".torch_cache")
+else:
+    cache_root = os.environ.get("HF_HOME") or "/root/.cache/huggingface"
+    os.environ["HF_HOME"] = cache_root
+    os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(cache_root, "hub")
+    os.environ["TORCH_HOME"] = os.environ.get("TORCH_HOME") or "/root/.cache/torch"
+
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["PYTHONUNBUFFERED"] = "1"
+os.environ["SAFETENSORS_BACKEND"] = "pread"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
+# Compatibility auto-check: PyTorch 2.2.0 in the RunPod image requires numpy<2 and transformers<4.45.0
+try:
+    import numpy as _np
+    if int(_np.__version__.split(".")[0]) >= 2:
+        import subprocess
+        subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "numpy<2", "transformers<4.45.0"], check=False)
+except Exception:
+    pass
+
+# Compatibility shims for diffusers on PyTorch < 2.5 (torch.nn.attention.flex_attention, torch.xpu, device_mesh)
+try:
+    import torch
+    import types
+    if not hasattr(torch, "xpu"):
+        setattr(torch, "xpu", type("xpu", (), {
+            "is_available": staticmethod(lambda: False),
+            "device_count": staticmethod(lambda: 0),
+            "empty_cache": staticmethod(lambda: None),
+            "__getattr__": lambda s, n: lambda *a, **k: None
+        })())
+    import torch.distributed as _dist
+    if not hasattr(_dist, "device_mesh"):
+        setattr(_dist, "device_mesh", types.SimpleNamespace(DeviceMesh=type("DeviceMesh", (), {}), init_device_mesh=lambda *a, **k: None))
+    
+    if not hasattr(torch.nn, "attention"):
+        _att = types.ModuleType("torch.nn.attention")
+        _flex = types.ModuleType("torch.nn.attention.flex_attention")
+        _flex.BlockMask = type("BlockMask", (), {})
+        _flex.create_block_mask = lambda *a, **k: None
+        _att.flex_attention = _flex
+        torch.nn.attention = _att
+        sys.modules["torch.nn.attention"] = _att
+        sys.modules["torch.nn.attention.flex_attention"] = _flex
+    elif not hasattr(torch.nn.attention, "flex_attention"):
+        _flex = types.ModuleType("torch.nn.attention.flex_attention")
+        _flex.BlockMask = type("BlockMask", (), {})
+        _flex.create_block_mask = lambda *a, **k: None
+        torch.nn.attention.flex_attention = _flex
+        sys.modules["torch.nn.attention.flex_attention"] = _flex
+except Exception:
+    pass
 
 # Ensure all user site-packages and system dist-packages are in sys.path
 for p in [
