@@ -681,7 +681,7 @@ async fn list_jobs(State(state): State<AppState>) -> Json<Vec<ServerJob>> {
 
 async fn clear_jobs(State(state): State<AppState>) -> StatusCode {
     let mut jobs = state.jobs.lock().await;
-    jobs.retain(|j| j.status == "RUNNING" || j.status == "IN_PROGRESS");
+    jobs.clear();
     StatusCode::OK
 }
 
