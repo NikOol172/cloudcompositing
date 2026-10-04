@@ -3509,4 +3509,42 @@ window.deactivateLicenseKey = deactivateLicenseKey;
 window.fetchLicenseStatus = fetchLicenseStatus;
 
 
+// ----------------------------------------------------
+// ComfyUI Integration
+// ----------------------------------------------------
+async function startComfyUIServer() {
+  const statusText = document.getElementById('comfy-status-text');
+  const btnStart = document.getElementById('btn-start-comfy');
+  const iframe = document.getElementById('comfyui-iframe');
 
+  if (statusText) statusText.innerText = "Démarrage en cours (ComfyUI + Tunnel sécurisé)...";
+  if (btnStart) btnStart.disabled = true;
+
+  try {
+    const res = await fetch('/api/comfyui/start', {
+      method: 'POST'
+    });
+    const data = await res.json();
+
+    if (data.status === 'success' && data.url) {
+      if (statusText) statusText.innerText = "Serveur actif ! Chargement de l'interface...";
+      if (statusText) statusText.style.color = "#4ade80"; // Green
+      
+      iframe.src = data.url;
+      iframe.style.display = "block";
+      if (statusText) statusText.innerText = "Interface chargée : " + data.url;
+      if (btnStart) btnStart.style.display = "none";
+    } else {
+      throw new Error(data.error || "Erreur de démarrage ou URL manquante");
+    }
+  } catch (err) {
+    console.error(err);
+    if (statusText) {
+      statusText.innerText = "Erreur : " + err.message;
+      statusText.style.color = "#f87171"; // Red
+    }
+    if (btnStart) btnStart.disabled = false;
+  }
+}
+
+window.startComfyUIServer = startComfyUIServer;

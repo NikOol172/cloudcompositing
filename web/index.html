@@ -44,6 +44,10 @@
           <span data-i18n="nav_jobs">Queue & Jobs</span>
           <span class="counter-badge active-jobs-badge" id="active-jobs-count" style="display:none;">0</span>
         </button>
+        <button class="nav-item" data-tab="comfyui">
+          <span class="icon">🔌</span>
+          <span data-i18n="nav_comfyui">ComfyUI Native</span>
+        </button>
         <button class="nav-item" data-tab="settings">
           <span class="icon">⚙️</span>
           <span data-i18n="nav_settings">Settings & API</span>
@@ -92,6 +96,28 @@
           <span class="mobile-balance-pill" id="mobile-balance-pill" onclick="switchTab('settings')">-- $</span>
         </div>
       </header>
+
+      <!-- TAB: COMFYUI -->
+      <section id="tab-comfyui" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>ComfyUI Native Studio</h2>
+            <p class="subtitle">Accès complet à l'éditeur nodal avancé tournant directement sur le GPU.</p>
+          </div>
+        </div>
+        <div class="comfyui-container" style="display:flex; flex-direction:column; height: 80vh; gap: 15px;">
+          <div class="comfyui-controls" style="padding: 15px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display:flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin:0; font-size:1.1rem; color: #fff;">Statut du serveur ComfyUI</h3>
+              <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9rem;" id="comfy-status-text">Vérification du statut...</p>
+            </div>
+            <button class="btn-primary btn-glow" id="btn-start-comfy" onclick="startComfyUIServer()">
+              <span>🚀 Lancer ComfyUI</span>
+            </button>
+          </div>
+          <iframe id="comfyui-iframe" src="" style="width: 100%; flex-grow: 1; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: #111; display: none;"></iframe>
+        </div>
+      </section>
 
       <!-- TAB 1: STUDIO GENERATION -->
       <section id="tab-studio" class="tab-pane active">
@@ -1118,7 +1144,7 @@
               </div>
               <div class="form-group col">
                 <label for="setting-minimax-endpoint">Endpoint MiniMax-H3 (Hailuo 3)</label>
-                <input type="text" id="setting-minimax-endpoint" value="minimax-h3">
+                <input type="text" id="setting-minimax-endpoint" value="minimax-hailuo-02-std">
               </div>
             </div>
 

@@ -96,7 +96,7 @@ fn default_ltx_endpoint() -> String {
 }
 
 fn default_minimax_endpoint() -> String {
-    std::env::var("RUNPOD_MINIMAX_ENDPOINT").unwrap_or_else(|_| "minimax-h3".to_string())
+    std::env::var("RUNPOD_MINIMAX_ENDPOINT").unwrap_or_else(|_| "minimax-hailuo-02-std".to_string())
 }
 
 impl ServerSettings {
@@ -190,6 +190,7 @@ pub async fn start_server(port: u16, open_browser: bool) -> anyhow::Result<()> {
     };
 
     let app = Router::new()
+        .route("/api/comfyui/start", post(start_comfyui))
         .route("/api/media", get(list_media))
         .route("/api/media/:filename", get(serve_media).delete(delete_media))
         .route("/api/upload", post(upload_media))
@@ -2881,3 +2882,57 @@ async fn start_lora_training(
     Ok(Json(serde_json::json!({ "id": job_id })))
 }
 
+
+#[derive(Serialize)]
+struct ComfyUIResponse {
+    status: String,
+    url: Option<String>,
+    error: Option<String>,
+}
+
+async fn start_comfyui(State(state): State<AppState>) -> Json<ComfyUIResponse> {
+    let script_path = state.workspace_dir.join("start_comfyui.sh");
+    
+    let output_result = tokio::process::Command::new("bash")
+        .arg(&script_path)
+        .output()
+        .await;
+
+    match output_result {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+
+            if out.status.success() {
+                let lines: Vec<&str> = stdout.lines().collect();
+                if let Some(url) = lines.last() {
+                    if url.starts_with("https://") {
+                        return Json(ComfyUIResponse {
+                            status: "success".to_string(),
+                            url: Some(url.to_string()),
+                            error: None,
+                        });
+                    }
+                }
+                Json(ComfyUIResponse {
+                    status: "error".to_string(),
+                    url: None,
+                    error: Some(format!("URL non trouvée. Sortie: {}", stdout)),
+                })
+            } else {
+                Json(ComfyUIResponse {
+                    status: "error".to_string(),
+                    url: None,
+                    error: Some(format!("Erreur d'exécution: {}\n{}", stdout, stderr)),
+                })
+            }
+        }
+        Err(e) => {
+            Json(ComfyUIResponse {
+                status: "error".to_string(),
+                url: None,
+                error: Some(e.to_string()),
+            })
+        }
+    }
+}

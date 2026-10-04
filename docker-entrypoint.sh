@@ -16,6 +16,7 @@ if [ -d "/workspace" ]; then
     cd /workspace
     [ ! -e "web" ] && ln -s /app/web web
     [ ! -e "src" ] && ln -s /app/src src
+    [ ! -e "start_comfyui.sh" ] && ln -s /app/start_comfyui.sh start_comfyui.sh
 else
     cd /app
 fi

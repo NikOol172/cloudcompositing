@@ -72,8 +72,9 @@ COPY --from=builder /usr/src/app/target/release/runpod-pipeline /app/runpod-pipe
 COPY web/ /app/web/
 COPY src/ /app/src/
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY start_comfyui.sh /app/start_comfyui.sh
 
-RUN chmod +x /app/docker-entrypoint.sh /app/runpod-pipeline
+RUN chmod +x /app/docker-entrypoint.sh /app/runpod-pipeline /app/start_comfyui.sh
 
 # Exposition du port Web Studio par défaut (3000)
 EXPOSE 3000

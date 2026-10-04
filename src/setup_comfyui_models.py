@@ -52,7 +52,7 @@ def main():
     # format: (repo_id, filename, destination_directory, requires_token)
     models = [
         ("stabilityai/stable-diffusion-xl-base-1.0", "sd_xl_base_1.0.safetensors", checkpoints_dir, False),
-        ("Lightricks/LTX-Video", "ltx-video-2.0.1.safetensors", checkpoints_dir, True),
+        ("Lightricks/LTX-Video", "ltx-video-2b-v0.9.1.safetensors", checkpoints_dir, True),
         ("ezioruan/inswapper_128.onnx", "inswapper_128.onnx", insightface_dir, False)
     ]
     

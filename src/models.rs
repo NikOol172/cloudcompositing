@@ -141,7 +141,7 @@ impl VideoModel {
         match self {
             Self::Wan2_5 => "wan-2-5",
             Self::Ltx2_5 => "ltx-video-2-5",
-            Self::MiniMaxH3 => "minimax-h3",
+            Self::MiniMaxH3 => "minimax-hailuo-02-std",
         }
     }
 }

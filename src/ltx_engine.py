@@ -6,15 +6,17 @@ Supports both Text-to-Video and Image-to-Video via Lightricks/LTX-Video.
 """
 
 import argparse
+import math
 import os
 import sys
 import time
 from PIL import Image
 
-# Compatibility shims for diffusers on PyTorch < 2.5 (torch.nn.attention.flex_attention, torch.xpu, device_mesh)
+# Compatibility shims for diffusers on PyTorch < 2.5 (torch.nn.attention.flex_attention, torch.xpu, device_mesh, RMSNorm)
 try:
     import torch
     import types
+    import builtins
     if not hasattr(torch, "xpu"):
         setattr(torch, "xpu", type("xpu", (), {
             "is_available": staticmethod(lambda: False),
@@ -22,10 +24,65 @@ try:
             "empty_cache": staticmethod(lambda: None),
             "__getattr__": lambda s, n: lambda *a, **k: None
         })())
-    import torch.distributed as _dist
+
+    if not hasattr(torch.serialization, "add_safe_globals"):
+        torch.serialization.add_safe_globals = lambda *args, **kwargs: None
+
+    def _rms_norm_impl(x, normalized_shape, weight=None, eps=1e-6):
+        variance = x.pow(2).mean(-1, keepdim=True)
+        x = x * torch.rsqrt(variance + eps)
+        if weight is not None:
+            x = x * weight
+        return x
+
+    class _RMSNormImpl(torch.nn.Module):
+        def __init__(self, normalized_shape, eps=1e-6, elementwise_affine=True, device=None, dtype=None):
+            super().__init__()
+            if isinstance(normalized_shape, builtins.int):
+                normalized_shape = (normalized_shape,)
+            self.normalized_shape = tuple(normalized_shape)
+            self.eps = eps
+            self.elementwise_affine = elementwise_affine
+            if self.elementwise_affine:
+                self.weight = torch.nn.Parameter(torch.empty(self.normalized_shape, device=device, dtype=dtype))
+                torch.nn.init.ones_(self.weight)
+            else:
+                self.register_parameter("weight", None)
+        def forward(self, x):
+            return _rms_norm_impl(x, self.normalized_shape, self.weight, self.eps)
+
+    if not hasattr(torch.nn.functional, "rms_norm"):
+        torch.nn.functional.rms_norm = _rms_norm_impl
+    if not hasattr(torch.nn, "RMSNorm"):
+        torch.nn.RMSNorm = _RMSNormImpl
+
+    # SDPA compatibility for PyTorch < 2.5 (enable_gqa argument)
+    import torch.nn.functional as _F
+    if not getattr(_F, "_sdpa_gqa_patched", False):
+        _orig_sdpa = _F.scaled_dot_product_attention
+        def _sdpa_compat(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None, enable_gqa=False):
+            if enable_gqa and query.shape[1] != key.shape[1]:
+                group = query.shape[1] // key.shape[1]
+                key = key.repeat_interleave(group, dim=1)
+                value = value.repeat_interleave(group, dim=1)
+            return _orig_sdpa(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal, scale=scale)
+        _F.scaled_dot_product_attention = _sdpa_compat
+        _F._sdpa_gqa_patched = True
+
+    try:
+        import torch.distributed as _dist
+    except Exception:
+        _dist = types.ModuleType("torch.distributed")
+        sys.modules["torch.distributed"] = _dist
+        torch.distributed = _dist
+
     if not hasattr(_dist, "device_mesh"):
-        setattr(_dist, "device_mesh", types.SimpleNamespace(DeviceMesh=type("DeviceMesh", (), {}), init_device_mesh=lambda *a, **k: None))
-    
+        _dm = types.ModuleType("torch.distributed.device_mesh")
+        class DeviceMesh: pass
+        _dm.DeviceMesh = DeviceMesh
+        _dist.device_mesh = _dm
+        sys.modules["torch.distributed.device_mesh"] = _dm
+
     if not hasattr(torch.nn, "attention"):
         _att = types.ModuleType("torch.nn.attention")
         _flex = types.ModuleType("torch.nn.attention.flex_attention")
@@ -70,23 +127,38 @@ def parse_args():
     parser.add_argument("--model-id", type=str, default="Lightricks/LTX-Video", help="HuggingFace model ID or local directory")
     return parser.parse_args()
 
-def parse_dimensions(res_str):
-    res_str = res_str.lower().strip()
-    if res_str == "720p":
-        return 768, 512
-    if res_str == "480p":
-        return 704, 480
+def parse_dimensions(res_str, source_image_path=None):
+    res_str = str(res_str).lower().strip() if res_str else "720p"
     if "x" in res_str:
         parts = res_str.split("x")
         try:
             w = int(parts[0])
             h = int(parts[1])
             # Align to multiples of 32 for DiT / VAE
-            w = (w // 32) * 32
-            h = (h // 32) * 32
-            return w, h
+            return max(256, (w // 32) * 32), max(256, (h // 32) * 32)
         except Exception:
             pass
+
+    target_area = 768 * 512
+    if "480" in res_str:
+        target_area = 704 * 480
+
+    # Auto-detect aspect ratio from input image if available
+    if source_image_path and os.path.exists(source_image_path):
+        try:
+            with Image.open(source_image_path) as img:
+                img_w, img_h = img.size
+                aspect = img_w / img_h
+                w = int(round(math.sqrt(target_area * aspect)))
+                h = int(round(target_area / w))
+                w = max(256, (w // 32) * 32)
+                h = max(256, (h // 32) * 32)
+                return w, h
+        except Exception as e:
+            print(f"[WARN] Failed to read source image aspect ratio: {e}", flush=True)
+
+    if "portrait" in res_str:
+        return 512, 768
     return 768, 512
 
 def save_video_safely(frames, output_path, fps=24):
@@ -215,7 +287,7 @@ def main():
     num_frames = ((num_frames - 1) // 8) * 8 + 1
     num_frames = max(25, min(num_frames, 161))
 
-    width, height = parse_dimensions(args.resolution)
+    width, height = parse_dimensions(args.resolution, args.image)
     print(f"[INFO] Aligned resolution: {width}x{height}, Number of frames: {num_frames} ({fps} fps)", flush=True)
 
     generator = None
