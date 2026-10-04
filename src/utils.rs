@@ -256,9 +256,15 @@ pub async fn download_file(url: &str, output_path: &Path, show_progress: bool) -
         let src = Path::new(url);
         if src.exists() {
             if src != output_path {
-                tokio::fs::copy(src, output_path)
-                    .await
-                    .with_context(|| format!("Impossible de copier le fichier de '{}' vers '{}'", src.display(), output_path.display()))?;
+                if let Err(_) = tokio::fs::copy(src, output_path).await {
+                    // Fallback for NFS / cross-device copies where copy_file_range fails with EPERM (os error 1)
+                    let data = tokio::fs::read(src)
+                        .await
+                        .with_context(|| format!("Impossible de lire le fichier source '{}'", src.display()))?;
+                    tokio::fs::write(output_path, data)
+                        .await
+                        .with_context(|| format!("Impossible d'écrire le fichier destination '{}'", output_path.display()))?;
+                }
             }
             return Ok(());
         }

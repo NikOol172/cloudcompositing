@@ -59,5 +59,22 @@ try:
         dm.DeviceMesh = type("DeviceMesh", (), {})
         dm.init_device_mesh = lambda *args, **kwargs: None
         dist.device_mesh = dm
+
+    import types
+    if not hasattr(torch.nn, "attention"):
+        _att = types.ModuleType("torch.nn.attention")
+        _flex = types.ModuleType("torch.nn.attention.flex_attention")
+        _flex.BlockMask = type("BlockMask", (), {})
+        _flex.create_block_mask = lambda *a, **k: None
+        _att.flex_attention = _flex
+        torch.nn.attention = _att
+        sys.modules["torch.nn.attention"] = _att
+        sys.modules["torch.nn.attention.flex_attention"] = _flex
+    elif not hasattr(torch.nn.attention, "flex_attention"):
+        _flex = types.ModuleType("torch.nn.attention.flex_attention")
+        _flex.BlockMask = type("BlockMask", (), {})
+        _flex.create_block_mask = lambda *a, **k: None
+        torch.nn.attention.flex_attention = _flex
+        sys.modules["torch.nn.attention.flex_attention"] = _flex
 except ImportError:
     pass
