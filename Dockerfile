@@ -34,7 +34,7 @@ RUN cargo build --release --bin runpod-pipeline
 # ==============================================================================
 # Étape 2 : Image d'Exécution avec CUDA, PyTorch et Moteurs IA
 # ==============================================================================
-FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 LABEL maintainer="NikOol172"
 LABEL description="CloudCompositing.com - Interface Web moderne & Orchestrateur IA (Video, Image, LoRA, TTS)"
