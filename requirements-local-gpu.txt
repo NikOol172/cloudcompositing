@@ -30,3 +30,4 @@ scipy>=1.11.0
 kokoro>=0.8.4
 torchaudio>=2.2.0
 coqui-tts>=0.27.5
+websocket-client>=1.8.0

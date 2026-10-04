@@ -221,7 +221,8 @@ async fn main() -> anyhow::Result<()> {
                 .with_endpoint(args.endpoint)
                 .with_dimensions(args.width, args.height)
                 .with_steps(args.steps)
-                .with_local(args.local);
+                .with_local(args.local)
+                .with_comfyui(args.comfyui, Some(args.comfyui_server), args.comfyui_workflow);
 
             if let Some(ref m) = args.local_model {
                 stage = stage.with_local_model(m.clone());

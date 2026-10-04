@@ -207,6 +207,18 @@ pub struct Txt2ImgArgs {
     /// Chemin de sortie du fichier image PNG.
     #[arg(short, long, default_value = "output_image.png")]
     pub output: PathBuf,
+
+    /// Utiliser ComfyUI local en mode headless.
+    #[arg(long, default_value_t = false)]
+    pub comfyui: bool,
+
+    /// Adresse du serveur ComfyUI.
+    #[arg(long, default_value = "127.0.0.1:8188")]
+    pub comfyui_server: String,
+
+    /// Chemin vers un workflow JSON ComfyUI spécifique.
+    #[arg(long)]
+    pub comfyui_workflow: Option<String>,
 }
 
 #[derive(Args, Debug)]

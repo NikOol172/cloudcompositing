@@ -27,6 +27,9 @@ pub struct TextToImageStage {
     pub controlnet_image: Option<String>,
     pub controlnet_type: Option<String>,
     pub controlnet_scale: Option<f32>,
+    pub comfyui: bool,
+    pub comfyui_server: Option<String>,
+    pub comfyui_workflow: Option<String>,
 }
 
 impl Default for TextToImageStage {
@@ -46,6 +49,9 @@ impl Default for TextToImageStage {
             controlnet_image: None,
             controlnet_type: None,
             controlnet_scale: None,
+            comfyui: false,
+            comfyui_server: None,
+            comfyui_workflow: None,
         }
     }
 }
@@ -103,12 +109,26 @@ impl TextToImageStage {
         self.controlnet_scale = scale;
         self
     }
+
+    pub fn with_comfyui(
+        mut self,
+        comfyui: bool,
+        server: Option<String>,
+        workflow: Option<String>,
+    ) -> Self {
+        self.comfyui = comfyui;
+        self.comfyui_server = server;
+        self.comfyui_workflow = workflow;
+        self
+    }
 }
 
 #[async_trait]
 impl Stage for TextToImageStage {
     fn name(&self) -> &str {
-        if self.local {
+        if self.comfyui {
+            "Génération d'Image ComfyUI (Headless)"
+        } else if self.local {
             "Génération d'Image Locale (GPU / Diffusers)"
         } else {
             "Génération d'Image Cloud (Text-to-Image / Flux)"
@@ -120,6 +140,88 @@ impl Stage for TextToImageStage {
         let seed = self
             .seed
             .unwrap_or_else(|| rand::thread_rng().gen_range(1..999_999_999));
+
+        if self.comfyui {
+            let model = self.local_model.as_deref().unwrap_or("sd_xl_base_1.0.safetensors");
+            let server = self.comfyui_server.as_deref().unwrap_or("127.0.0.1:8188");
+            let default_workflow = "src/comfy_workflows/sdxl_t2i.json".to_string();
+            let workflow = self.comfyui_workflow.as_ref().unwrap_or(&default_workflow);
+            
+            let temp_out = std::env::temp_dir().join(format!("comfyui_t2i_{}.png", rand::random::<u32>()));
+            let temp_out_str = temp_out.to_string_lossy().to_string();
+
+            println!(
+                "  Mode: {}, Modèle: {}, {}x{}, {} steps, Seed: {}",
+                style("ComfyUI Headless").green().bold(),
+                style(model).cyan(),
+                self.width,
+                self.height,
+                self.num_inference_steps,
+                seed
+            );
+            println!("  Serveur: {}, Workflow: {}", server, workflow);
+
+            let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+            crate::utils::configure_python_command(&mut cmd);
+            cmd.args([
+                "src/comfyui_engine.py",
+                "--prompt", &prompt,
+                "--output", &temp_out_str,
+                "--model", model,
+                "--width", &self.width.to_string(),
+                "--height", &self.height.to_string(),
+                "--steps", &self.num_inference_steps.to_string(),
+                "--seed", &seed.to_string(),
+                "--workflow", workflow,
+                "--server", server,
+            ]);
+
+            cmd.stdout(std::process::Stdio::piped())
+               .stderr(std::process::Stdio::piped());
+
+            let mut child = cmd
+                .spawn()
+                .context("Impossible de démarrer le script comfyui_engine.py")?;
+
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
+
+            let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+            let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+            loop {
+                tokio::select! {
+                    line = stdout_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => println!("  {}", l),
+                            _ => break,
+                        }
+                    }
+                    line = stderr_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => eprintln!("  [stderr] {}", l),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            let status = child.wait().await?;
+            if !status.success() {
+                anyhow::bail!("Échec de l'exécution du moteur ComfyUI Headless.");
+            }
+
+            println!(
+                "  {} Image ComfyUI produite avec succès : {}",
+                style("✓").green().bold(),
+                style(&temp_out_str).cyan().underlined()
+            );
+
+            ctx.image_url = Some(temp_out_str);
+            ctx.set_meta("t2i_seed", seed);
+            ctx.set_meta("t2i_engine", "comfyui");
+            return Ok(());
+        }
 
         if self.local {
             let model = self
