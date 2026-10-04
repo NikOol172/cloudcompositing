@@ -234,11 +234,20 @@ impl Stage for VideoToVideoStage {
             return Ok(());
         }
 
+        let mut actual_duration = self.duration;
+        if self.model == VideoModel::MiniMaxH3 {
+            if actual_duration <= 6 {
+                actual_duration = 6;
+            } else {
+                actual_duration = 10;
+            }
+        }
+
         let input = Vid2VidInput {
             prompt: prompt.to_string(),
             image: resolved_video.clone(),
             video: Some(resolved_video),
-            duration: Some(self.duration),
+            duration: Some(actual_duration),
             strength: Some(self.strength),
             resolution: Some(self.resolution.clone()),
             seed: self.seed,
@@ -248,7 +257,7 @@ impl Stage for VideoToVideoStage {
         println!(
             "  Modèle : {}, Durée {}s, Force (strength) {:.2}, Résolution {}, Prompt: {}",
             style(self.model.display_name()).bold().cyan(),
-            self.duration,
+            actual_duration,
             self.strength,
             self.resolution,
             style(prompt).italic()

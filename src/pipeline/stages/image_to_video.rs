@@ -216,10 +216,19 @@ impl Stage for ImageToVideoStage {
             return Ok(());
         }
 
+        let mut actual_duration = self.duration;
+        if self.model == VideoModel::MiniMaxH3 {
+            if actual_duration <= 6 {
+                actual_duration = 6;
+            } else {
+                actual_duration = 10;
+            }
+        }
+
         let input = WanInput {
             prompt: prompt.to_string(),
             image: Some(resolved_image),
-            duration: Some(self.duration),
+            duration: Some(actual_duration),
             resolution: Some(self.resolution.clone()),
             seed: self.seed,
             negative_prompt: self.negative_prompt.clone(),
@@ -229,7 +238,7 @@ impl Stage for ImageToVideoStage {
         println!(
             "  Modèle : {}, Durée {}s, Résolution {}, Prompt: {}",
             style(self.model.display_name()).bold().cyan(),
-            self.duration,
+            actual_duration,
             self.resolution,
             style(prompt).italic()
         );
