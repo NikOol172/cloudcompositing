@@ -124,7 +124,8 @@ async fn main() -> anyhow::Result<()> {
                 .with_image(args.image)
                 .with_duration(args.duration)
                 .with_resolution(args.resolution)
-                .with_prompt(args.prompt);
+                .with_prompt(args.prompt)
+                .with_comfyui(args.comfyui, Some(args.comfyui_server), args.comfyui_workflow);
 
             if let Some(ep) = args.endpoint {
                 stage = stage.with_endpoint(ep);
@@ -262,7 +263,8 @@ async fn main() -> anyhow::Result<()> {
                 .with_prompt(args.prompt)
                 .with_strength(args.strength)
                 .with_steps(args.steps)
-                .with_local(args.local);
+                .with_local(args.local)
+                .with_comfyui(args.comfyui, Some(args.comfyui_server), args.comfyui_workflow);
 
             if args.width > 0 && args.height > 0 {
                 stage = stage.with_dimensions(args.width, args.height);
@@ -309,7 +311,8 @@ async fn main() -> anyhow::Result<()> {
                 .with_duration(args.duration)
                 .with_strength(args.strength)
                 .with_resolution(args.resolution)
-                .with_prompt(args.prompt);
+                .with_prompt(args.prompt)
+                .with_comfyui(args.comfyui, Some(args.comfyui_server), args.comfyui_workflow);
 
             if let Some(ep) = args.endpoint {
                 stage = stage.with_endpoint(ep);
@@ -359,7 +362,8 @@ async fn main() -> anyhow::Result<()> {
             let stage = FaceSwapStage::new(args.source, args.target)
                 .with_endpoint(args.endpoint)
                 .with_restore_face(args.restore_face)
-                .with_face_index(args.face_index);
+                .with_face_index(args.face_index)
+                .with_comfyui(args.comfyui, Some(args.comfyui_server), args.comfyui_workflow);
 
             let download_stage = if is_video_target {
                 DownloadStage::new().download_video(output_path.clone())

@@ -1,0 +1,126 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "ltx-video-2.0.1.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (LTX)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "image": "uploaded_image.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "prompt here",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 768,
+      "height": 512,
+      "length": 129,
+      "batch_size": 1,
+      "image": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "LTXVideoLatentImage",
+    "_meta": {
+      "title": "LTX Video Latent Image"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 0,
+      "steps": 25,
+      "cfg": 3.0,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "LTX_Video",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine"
+    }
+  }
+}

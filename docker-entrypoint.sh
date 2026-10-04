@@ -37,6 +37,11 @@ fi
 echo "📦 Installing ComfyUI dependencies..."
 pip install --no-cache-dir -r "$COMFY_DIR/requirements.txt"
 
+# Télécharger les modèles nécessaires si manquants
+echo "⬇️ Checking and downloading required ComfyUI models..."
+export COMFYUI_DIR="$COMFY_DIR"
+python3 /app/src/setup_comfyui_models.py
+
 # Start ComfyUI in the background
 echo "🚀 Starting ComfyUI server in the background (port 8188)..."
 pushd "$COMFY_DIR" > /dev/null

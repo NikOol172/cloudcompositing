@@ -21,6 +21,9 @@ pub struct VideoToVideoStage {
     pub seed: Option<u64>,
     pub negative_prompt: Option<String>,
     pub timeout: Duration,
+    pub comfyui: bool,
+    pub comfyui_server: Option<String>,
+    pub comfyui_workflow: Option<String>,
 }
 
 impl Default for VideoToVideoStage {
@@ -36,6 +39,9 @@ impl Default for VideoToVideoStage {
             seed: None,
             negative_prompt: None,
             timeout: Duration::from_secs(900),
+            comfyui: false,
+            comfyui_server: None,
+            comfyui_workflow: None,
         }
     }
 }
@@ -92,15 +98,31 @@ impl VideoToVideoStage {
         self.negative_prompt = Some(neg_prompt.into());
         self
     }
+
+    pub fn with_comfyui(
+        mut self,
+        comfyui: bool,
+        server: Option<String>,
+        workflow: Option<String>,
+    ) -> Self {
+        self.comfyui = comfyui;
+        self.comfyui_server = server;
+        self.comfyui_workflow = workflow;
+        self
+    }
 }
 
 #[async_trait]
 impl Stage for VideoToVideoStage {
     fn name(&self) -> &str {
-        match self.model {
-            VideoModel::Wan2_5 => "Modification Vidéo (Video-to-Video / Wan 2.5)",
-            VideoModel::Ltx2_5 => "Modification Vidéo (Video-to-Video / LTX-Video 2.5)",
-            VideoModel::MiniMaxH3 => "Modification Vidéo (Video-to-Video / MiniMax-H3)",
+        if self.comfyui {
+            "Modification Vidéo (Video-to-Video / ComfyUI)"
+        } else {
+            match self.model {
+                VideoModel::Wan2_5 => "Modification Vidéo (Video-to-Video / Wan 2.5)",
+                VideoModel::Ltx2_5 => "Modification Vidéo (Video-to-Video / LTX-Video 2.5)",
+                VideoModel::MiniMaxH3 => "Modification Vidéo (Video-to-Video / MiniMax-H3)",
+            }
         }
     }
 
@@ -131,6 +153,86 @@ impl Stage for VideoToVideoStage {
             .prompt_override
             .as_deref()
             .unwrap_or_else(|| ctx.effective_prompt());
+
+        if self.comfyui {
+            use tokio::io::AsyncBufReadExt;
+            use rand::Rng;
+
+            let server = self.comfyui_server.as_deref().unwrap_or("127.0.0.1:8188");
+            let default_workflow = "src/comfy_workflows/vid2vid.json".to_string();
+            let workflow = self.comfyui_workflow.as_ref().unwrap_or(&default_workflow);
+            
+            let temp_out = std::env::temp_dir().join(format!("comfyui_v2v_{}.mp4", rand::random::<u32>()));
+            let temp_out_str = temp_out.to_string_lossy().to_string();
+            let seed = self.seed.unwrap_or_else(|| rand::thread_rng().gen_range(1..999_999_999));
+
+            println!(
+                "  Mode: {}, Force (strength): {:.2}, Seed: {}",
+                style("ComfyUI Headless").green().bold(),
+                self.strength,
+                seed
+            );
+            println!("  Serveur: {}, Workflow: {}", server, workflow);
+
+            let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+            crate::utils::configure_python_command(&mut cmd);
+            cmd.args([
+                "src/comfyui_engine.py",
+                "--prompt", prompt,
+                "--input_image", &resolved_video,
+                "--output", &temp_out_str,
+                "--seed", &seed.to_string(),
+                "--workflow", workflow,
+                "--server", server,
+                "--strength", &self.strength.to_string(),
+            ]);
+
+            cmd.stdout(std::process::Stdio::piped())
+               .stderr(std::process::Stdio::piped());
+
+            let mut child = cmd
+                .spawn()
+                .context("Impossible de démarrer le script comfyui_engine.py pour Vid2Vid")?;
+
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
+
+            let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+            let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+            loop {
+                tokio::select! {
+                    line = stdout_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => println!("  {}", l),
+                            _ => break,
+                        }
+                    }
+                    line = stderr_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => eprintln!("  [stderr] {}", l),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            let status = child.wait().await?;
+            if !status.success() {
+                bail!("Échec de l'exécution du moteur ComfyUI Headless pour Vid2Vid.");
+            }
+
+            println!(
+                "  {} Vidéo ComfyUI transformée avec succès : {}",
+                style("✓").green().bold(),
+                style(&temp_out_str).cyan().underlined()
+            );
+
+            ctx.video_url = Some(temp_out_str);
+            ctx.set_meta("v2v_seed", seed);
+            ctx.set_meta("v2v_engine", "comfyui");
+            return Ok(());
+        }
 
         let input = Vid2VidInput {
             prompt: prompt.to_string(),

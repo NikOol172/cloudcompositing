@@ -15,6 +15,9 @@ pub struct FaceSwapStage {
     pub restore_face: bool,
     pub face_index: u32,
     pub timeout: Duration,
+    pub comfyui: bool,
+    pub comfyui_server: Option<String>,
+    pub comfyui_workflow: Option<String>,
 }
 
 impl Default for FaceSwapStage {
@@ -26,6 +29,9 @@ impl Default for FaceSwapStage {
             restore_face: true,
             face_index: 0,
             timeout: Duration::from_secs(600),
+            comfyui: false,
+            comfyui_server: None,
+            comfyui_workflow: None,
         }
     }
 }
@@ -53,6 +59,18 @@ impl FaceSwapStage {
         self.face_index = index;
         self
     }
+
+    pub fn with_comfyui(
+        mut self,
+        comfyui: bool,
+        server: Option<String>,
+        workflow: Option<String>,
+    ) -> Self {
+        self.comfyui = comfyui;
+        self.comfyui_server = server;
+        self.comfyui_workflow = workflow;
+        self
+    }
 }
 
 use tokio::io::AsyncBufReadExt;
@@ -60,7 +78,11 @@ use tokio::io::AsyncBufReadExt;
 #[async_trait]
 impl Stage for FaceSwapStage {
     fn name(&self) -> &str {
-        "Remplacement de Visage (Face Swap)"
+        if self.comfyui {
+            "Remplacement de Visage (Face Swap / ComfyUI)"
+        } else {
+            "Remplacement de Visage (Face Swap)"
+        }
     }
 
     async fn execute(&self, ctx: &mut PipelineContext, _client: &RunpodClient) -> Result<()> {
@@ -79,65 +101,120 @@ impl Stage for FaceSwapStage {
             self.face_index
         );
 
-        println!("  Lancement du moteur de remplacement de visage InsightFace...");
+        if self.comfyui {
+            let server = self.comfyui_server.as_deref().unwrap_or("127.0.0.1:8188");
+            let default_workflow = "src/comfy_workflows/reactor_faceswap.json".to_string();
+            let workflow = self.comfyui_workflow.as_ref().unwrap_or(&default_workflow);
 
-        let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
-        crate::utils::configure_python_command(&mut cmd);
-        cmd.args([
-            "src/faceswap_engine.py",
-            "--source", &self.source_face_input,
-            "--target", &self.target_media_input,
-            "--output", temp_out.to_str().unwrap(),
-            "--face-index", &self.face_index.to_string(),
-        ]);
+            println!("  Serveur ComfyUI: {}, Workflow: {}", server, workflow);
 
-        if let Ok(home) = std::env::var("HOME") {
-            let full_paths = format!(
-                "{}/.local/lib/python3.10/site-packages:/usr/local/lib/python3.10/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.10",
-                home
-            );
-            let current_pypath = std::env::var("PYTHONPATH").unwrap_or_default();
-            let new_pypath = if current_pypath.is_empty() {
-                full_paths
-            } else {
-                format!("{}:{}", current_pypath, full_paths)
-            };
-            cmd.env("PYTHONPATH", new_pypath);
-        }
+            let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+            crate::utils::configure_python_command(&mut cmd);
+            cmd.args([
+                "src/comfyui_engine.py",
+                "--prompt", "faceswap", // unused but required by parser
+                "--input_image", &self.target_media_input,
+                "--input_image2", &self.source_face_input,
+                "--output", temp_out.to_str().unwrap(),
+                "--workflow", workflow,
+                "--server", server,
+            ]);
 
-        cmd.stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+            cmd.stdout(std::process::Stdio::piped())
+               .stderr(std::process::Stdio::piped());
 
-        let mut child = cmd
-            .spawn()
-            .context("Impossible de démarrer le script faceswap_engine.py")?;
+            let mut child = cmd
+                .spawn()
+                .context("Impossible de démarrer le script comfyui_engine.py pour Face Swap")?;
 
-        let stdout = child.stdout.take().unwrap();
-        let stderr = child.stderr.take().unwrap();
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
 
-        let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
-        let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+            let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+            let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
 
-        loop {
-            tokio::select! {
-                line = stdout_reader.next_line() => {
-                    match line {
-                        Ok(Some(l)) => println!("  {}", l),
-                        _ => break,
+            loop {
+                tokio::select! {
+                    line = stdout_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => println!("  {}", l),
+                            _ => break,
+                        }
                     }
-                }
-                line = stderr_reader.next_line() => {
-                    match line {
-                        Ok(Some(l)) => eprintln!("  [stderr] {}", l),
-                        _ => {}
+                    line = stderr_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => eprintln!("  [stderr] {}", l),
+                            _ => {}
+                        }
                     }
                 }
             }
-        }
 
-        let status = child.wait().await?;
-        if !status.success() {
-            anyhow::bail!("Échec de l'exécution du moteur de Face Swap.");
+            let status = child.wait().await?;
+            if !status.success() {
+                anyhow::bail!("Échec de l'exécution de ComfyUI Headless pour le Face Swap.");
+            }
+        } else {
+            println!("  Lancement du moteur de remplacement de visage InsightFace...");
+
+            let mut cmd = tokio::process::Command::new(crate::utils::get_python_binary());
+            crate::utils::configure_python_command(&mut cmd);
+            cmd.args([
+                "src/faceswap_engine.py",
+                "--source", &self.source_face_input,
+                "--target", &self.target_media_input,
+                "--output", temp_out.to_str().unwrap(),
+                "--face-index", &self.face_index.to_string(),
+            ]);
+
+            if let Ok(home) = std::env::var("HOME") {
+                let full_paths = format!(
+                    "{}/.local/lib/python3.10/site-packages:/usr/local/lib/python3.10/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.10",
+                    home
+                );
+                let current_pypath = std::env::var("PYTHONPATH").unwrap_or_default();
+                let new_pypath = if current_pypath.is_empty() {
+                    full_paths
+                } else {
+                    format!("{}:{}", current_pypath, full_paths)
+                };
+                cmd.env("PYTHONPATH", new_pypath);
+            }
+
+            cmd.stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped());
+
+            let mut child = cmd
+                .spawn()
+                .context("Impossible de démarrer le script faceswap_engine.py")?;
+
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
+
+            let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+            let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+            loop {
+                tokio::select! {
+                    line = stdout_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => println!("  {}", l),
+                            _ => break,
+                        }
+                    }
+                    line = stderr_reader.next_line() => {
+                        match line {
+                            Ok(Some(l)) => eprintln!("  [stderr] {}", l),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            let status = child.wait().await?;
+            if !status.success() {
+                anyhow::bail!("Échec de l'exécution du moteur de Face Swap.");
+            }
         }
 
         let result_file_str = temp_out.to_string_lossy().to_string();

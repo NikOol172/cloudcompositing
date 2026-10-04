@@ -97,6 +97,18 @@ pub struct Img2VidArgs {
     /// Chemin de sortie du fichier vidéo MP4 téléchargé.
     #[arg(short, long, default_value = "output_video.mp4")]
     pub output: PathBuf,
+
+    /// Utiliser ComfyUI local en mode headless.
+    #[arg(long, default_value_t = false)]
+    pub comfyui: bool,
+
+    /// Adresse du serveur ComfyUI.
+    #[arg(long, default_value = "127.0.0.1:8188")]
+    pub comfyui_server: String,
+
+    /// Chemin vers un workflow JSON ComfyUI spécifique.
+    #[arg(long)]
+    pub comfyui_workflow: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -270,6 +282,18 @@ pub struct Img2ImgArgs {
     /// Chemin de sortie du fichier image résultat.
     #[arg(short, long, default_value = "output_img2img.png")]
     pub output: PathBuf,
+
+    /// Utiliser ComfyUI local en mode headless.
+    #[arg(long, default_value_t = false)]
+    pub comfyui: bool,
+
+    /// Adresse du serveur ComfyUI.
+    #[arg(long, default_value = "127.0.0.1:8188")]
+    pub comfyui_server: String,
+
+    /// Chemin vers un workflow JSON ComfyUI spécifique.
+    #[arg(long)]
+    pub comfyui_workflow: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -328,6 +352,18 @@ pub struct Vid2VidArgs {
     /// Chemin de sortie du fichier vidéo MP4 modifié.
     #[arg(short, long, default_value = "output_vid2vid.mp4")]
     pub output: PathBuf,
+
+    /// Utiliser ComfyUI local en mode headless.
+    #[arg(long, default_value_t = false)]
+    pub comfyui: bool,
+
+    /// Adresse du serveur ComfyUI.
+    #[arg(long, default_value = "127.0.0.1:8188")]
+    pub comfyui_server: String,
+
+    /// Chemin vers un workflow JSON ComfyUI spécifique.
+    #[arg(long)]
+    pub comfyui_workflow: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -355,6 +391,18 @@ pub struct FaceSwapArgs {
     /// Chemin de sortie pour sauvegarder le résultat (image ou vidéo).
     #[arg(short, long)]
     pub output: Option<PathBuf>,
+
+    /// Utiliser ComfyUI local en mode headless au lieu du script Python classique.
+    #[arg(long, default_value_t = false)]
+    pub comfyui: bool,
+
+    /// Adresse du serveur ComfyUI.
+    #[arg(long, default_value = "127.0.0.1:8188")]
+    pub comfyui_server: String,
+
+    /// Chemin vers un workflow JSON ComfyUI spécifique (par défaut: reactor_faceswap.json).
+    #[arg(long)]
+    pub comfyui_workflow: Option<String>,
 }
 
 #[derive(Args, Debug)]
