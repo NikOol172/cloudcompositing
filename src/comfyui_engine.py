@@ -84,8 +84,6 @@ def main():
     if args.input_image:
         image_path_to_upload = args.input_image
         if args.input_image.startswith('http://') or args.input_image.startswith('https://'):
-            import tempfile
-            import uuid
             tmp_path = os.path.join(tempfile.gettempdir(), f"downloaded_{uuid.uuid4().hex}.png")
             print(f"Downloading image from {args.input_image}...", flush=True)
             urllib.request.urlretrieve(args.input_image, tmp_path)
@@ -106,8 +104,6 @@ def main():
     if args.input_image2:
         image_path_to_upload = args.input_image2
         if args.input_image2.startswith('http://') or args.input_image2.startswith('https://'):
-            import tempfile
-            import uuid
             tmp_path = os.path.join(tempfile.gettempdir(), f"downloaded_{uuid.uuid4().hex}.png")
             print(f"Downloading image 2 from {args.input_image2}...", flush=True)
             urllib.request.urlretrieve(args.input_image2, tmp_path)
