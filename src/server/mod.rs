@@ -1952,13 +1952,17 @@ async fn generate_vid2vid(
         let client = create_client_with_tracking(state_clone.clone(), job_id_clone.clone(), api_key, base_url);
         let mut ctx = PipelineContext::new(payload.prompt.clone());
 
-        let stage = VideoToVideoStage::new()
+        let mut stage = VideoToVideoStage::new()
             .with_model(video_model)
             .with_endpoint(video_ep)
             .with_video(payload.video)
             .with_strength(payload.strength.unwrap_or(0.65))
             .with_resolution(payload.resolution.unwrap_or_else(|| "720p".to_string()))
             .with_prompt(payload.prompt);
+
+        if video_model == crate::models::VideoModel::Ltx2_5 || payload.model.as_deref() == Some("comfyui") {
+            stage = stage.with_comfyui(true, Some("127.0.0.1:8188".to_string()), Some("src/comfy_workflows/vid2vid.json".to_string()));
+        }
 
         let pipeline = Pipeline::new("Video-to-Video")
             .add_stage(stage)

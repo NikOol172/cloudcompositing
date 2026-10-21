@@ -138,10 +138,14 @@ impl Stage for VideoToVideoStage {
             bail!("Aucune vidéo source fournie pour l'étape Video-to-Video (ni dans le contexte, ni en paramètre).");
         };
 
-        println!("  Préparation de la vidéo source...");
-        let resolved_video = resolve_video_input(&raw_video_input)
-            .await
-            .with_context(|| format!("Impossible de préparer la vidéo source '{}'", raw_video_input))?;
+        let resolved_video = if self.comfyui {
+            raw_video_input.clone()
+        } else {
+            println!("  Préparation de la vidéo source...");
+            resolve_video_input(&raw_video_input)
+                .await
+                .with_context(|| format!("Impossible de préparer la vidéo source '{}'", raw_video_input))?
+        };
 
         if resolved_video.starts_with("data:") {
             println!("  Vidéo locale encodée avec succès en Data-URI (base64).");
